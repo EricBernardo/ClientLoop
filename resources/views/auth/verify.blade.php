@@ -1,0 +1,1 @@
+<!doctype html><html lang="pt-BR"><body style="font-family:system-ui;max-width:42rem;margin:6rem auto"><h1>Confirme seu e-mail</h1><p>Enviamos um link para confirmação. Depois, acesse o painel.</p><form method="post" action="{{ route('verification.send') }}">@csrf<button>Reenviar link</button></form></body></html>

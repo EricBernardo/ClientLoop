@@ -1,0 +1,85 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+      - '*.x'
+  pull_request:
+  schedule:
+    - cron: '0 0 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        php: [8.3, 8.4, 8.5]
+
+    name: PHP ${{ matrix.php }}
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: clientloop
+          POSTGRES_USER: clientloop
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U clientloop -d clientloop"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: dom, curl, intl, libxml, mbstring, pdo, pdo_pgsql, sqlite, pdo_sqlite, zip
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Copy environment file
+        run: cp .env.example .env
+
+      - name: Generate app key
+        run: php artisan key:generate
+
+      - name: Verify PostgreSQL migrations
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: clientloop
+          DB_USERNAME: clientloop
+          DB_PASSWORD: secret
+        run: php artisan migrate --force
+
+      - name: Verify formatting
+        run: vendor/bin/pint --test
+
+      - name: Static analysis
+        run: composer analyse
+
+      - name: Execute tests
+        run: php artisan test
+
+      - name: Build frontend assets
+        run: |
+          npm install
+          npm run build

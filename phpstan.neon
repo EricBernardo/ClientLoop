@@ -1,0 +1,7 @@
+parameters:
+    paths:
+        - app
+    # O ORM usa métodos e propriedades dinâmicos; a análise base verifica chamadas,
+    # assinaturas e fluxo sem assumir metadados específicos do banco.
+    level: 0
+    tmpDir: storage/phpstan

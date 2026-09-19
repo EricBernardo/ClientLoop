@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    ports: ["8000:8000"]
+    env_file: .env
+    depends_on: [postgres, mailpit]
+  worker:
+    build: .
+    command: php artisan queue:work --tries=3 --timeout=120
+    env_file: .env
+    depends_on: [postgres]
+  scheduler:
+    build: .
+    command: php artisan schedule:work
+    env_file: .env
+    depends_on: [postgres]
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: clientloop
+      POSTGRES_USER: clientloop
+      POSTGRES_PASSWORD: secret
+    ports: ["5432:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql"]
+  mailpit:
+    image: axllent/mailpit
+    ports: ["8025:8025", "1025:1025"]
+volumes:
+  postgres-data:
