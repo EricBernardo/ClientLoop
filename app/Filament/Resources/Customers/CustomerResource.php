@@ -2,9 +2,12 @@
 
 namespace App\Filament\Resources\Customers;
 
+use App\Filament\Forms\Components\HourlyDateTimePicker;
 use App\Filament\Resources\Customers\Pages\CreateCustomer;
 use App\Filament\Resources\Customers\Pages\EditCustomer;
 use App\Filament\Resources\Customers\Pages\ListCustomers;
+use App\Filament\Resources\Customers\RelationManagers\AppointmentsRelationManager;
+use App\Filament\Resources\Customers\RelationManagers\PetsRelationManager;
 use App\Models\Customer;
 use App\Services\ContactTaskService;
 use BackedEnum;
@@ -13,8 +16,6 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
@@ -31,31 +32,31 @@ class CustomerResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
+    protected static ?int $navigationSort = 3;
+
     public static function getNavigationLabel(): string
     {
-        return 'Clientes';
+        return 'Responsáveis';
     }
 
     public static function getModelLabel(): string
     {
-        return 'cliente';
+        return 'responsável';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'clientes';
+        return 'responsáveis';
     }
 
     public static function form(Schema $schema): Schema
     {
         return $schema
             ->components([
-                TextInput::make('name')->required()->maxLength(255),
-                TextInput::make('phone')->required()->helperText('DDD + número; o sistema normaliza para +55.'),
-                TextInput::make('email')->email(), TagsInput::make('tags'),
-                DateTimePicker::make('next_return_at')->label('Próximo retorno'),
-                DateTimePicker::make('opted_out_at')->label('Bloqueio de contato')->helperText('Preencha somente após consentimento explícito de não receber contato.'),
-                Textarea::make('notes')->columnSpanFull(),
+                TextInput::make('name')->label('Nome do responsável')->required()->maxLength(255),
+                TextInput::make('phone')->label('Telefone')->required()->helperText('DDD + número; o sistema normaliza para +55.'),
+                HourlyDateTimePicker::make('opted_out_at')->label('Bloqueio de contato')->helperText('Preencha somente após consentimento explícito de não receber contato.'),
+                Textarea::make('notes')->label('Observações')->columnSpanFull(),
             ]);
     }
 
@@ -63,14 +64,16 @@ class CustomerResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')->searchable()->sortable(), TextColumn::make('phone')->searchable(),
-                TextColumn::make('next_return_at')->dateTime('d/m/Y')->label('Retorno')->sortable(),
+                TextColumn::make('name')->label('Responsável')->searchable()->sortable(), TextColumn::make('phone')->label('Telefone')->searchable(),
+                TextColumn::make('pets.name')->label('Pets')->badge()->separator(',')->limitList(3),
+                TextColumn::make('next_return_at')->dateTime('d/m/Y')->placeholder('Ainda não calculado')->label('Retorno previsto')->sortable(),
                 IconColumn::make('opted_out_at')->boolean()->label('Bloqueado'),
             ])
             ->filters([
                 TernaryFilter::make('opted_out_at')->label('Contato bloqueado'),
             ])
             ->recordActions([
+                Action::make('ajustarRetorno')->label('Ajustar retorno previsto')->icon('heroicon-o-calendar-days')->fillForm(fn (Customer $record): array => ['next_return_at' => $record->next_return_at])->form([HourlyDateTimePicker::make('next_return_at')->label('Data e horário do retorno')->helperText('Normalmente calculado ao concluir um atendimento. Ajuste somente para uma exceção.')])->action(fn (Customer $record, array $data) => $record->update(['next_return_at' => $data['next_return_at'] ?? null])),
                 Action::make('novoConsentimento')->label('Registrar novo consentimento')->visible(fn (Customer $record) => ! $record->can_contact)->form([Textarea::make('consent')->label('Como e quando a pessoa autorizou novo contato?')->required()])->action(fn (Customer $record, array $data) => app(ContactTaskService::class)->optIn($record, $data['consent'])),
                 EditAction::make()->url(fn (Customer $record) => self::getUrl('edit', ['record' => $record])),
                 DeleteAction::make(),
@@ -80,6 +83,14 @@ class CustomerResource extends Resource
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            PetsRelationManager::class,
+            AppointmentsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

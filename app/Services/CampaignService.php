@@ -53,9 +53,9 @@ class CampaignService
         if ($campaign->type === 'recall') {
             $months = data_get($campaign->filters, 'return_months');
 
-            return $query->when($months, fn ($q) => $q->whereBetween('next_return_at', [now()->subMonths((int) $months), now()]), fn ($q) => $q->where('next_return_at', '<=', now()));
+            return $query->whereDoesntHave('appointments', fn ($q) => $q->whereIn('status', ['scheduled', 'confirmed', 'reschedule_requested'])->where('scheduled_at', '>', now()))->when($months, fn ($q) => $q->whereBetween('next_return_at', [now()->subMonths((int) $months), now()]), fn ($q) => $q->where('next_return_at', '<=', now()));
         }
 
-        return $query->whereNotNull('last_activity_at')->where('last_activity_at', '<=', now()->subMonths($campaign->company->reactivation_months))->whereDoesntHave('appointments', fn ($q) => $q->whereIn('status', ['scheduled', 'confirmed', 'reschedule_requested'])->where('scheduled_at', '>', now()))->whereDoesntHave('opportunities', fn ($q) => $q->whereNotIn('stage', ['won', 'lost']));
+        return $query->whereNotNull('last_activity_at')->where('last_activity_at', '<=', now()->subMonths($campaign->company->reactivation_months))->whereDoesntHave('appointments', fn ($q) => $q->whereIn('status', ['scheduled', 'confirmed', 'reschedule_requested'])->where('scheduled_at', '>', now()));
     }
 }

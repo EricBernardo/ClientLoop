@@ -9,163 +9,171 @@ use App\Models\CompanySubscription;
 use App\Models\ContactTask;
 use App\Models\Customer;
 use App\Models\MessageTemplate;
-use App\Models\Opportunity;
+use App\Models\PackageOffer;
+use App\Models\PackageRedemption;
+use App\Models\Pet;
+use App\Models\PetPackage;
 use App\Models\Plan;
 use App\Models\Service;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Hash;
 
 class DemoClinicSeeder extends Seeder
 {
     public function run(): void
     {
-        $plan = Plan::firstOrCreate(
-            ['name' => 'Plano demonstração'],
-            ['contact_limit' => 500, 'task_limit' => 1000, 'is_default' => false],
-        );
-
-        $company = Company::updateOrCreate(
-            ['slug' => 'clinica-sorriso-demo'],
-            [
-                'name' => 'Clínica Sorriso & Saúde',
-                'timezone' => 'America/Sao_Paulo',
-                'status' => 'active',
-                'confirmation_hours' => 24,
-                'reactivation_months' => 6,
-                'follow_up_days' => [1, 3, 7],
-            ],
-        );
-
-        CompanySubscription::withoutGlobalScopes()->updateOrCreate(
-            ['company_id' => $company->id],
-            ['plan_id' => $plan->id, 'status' => 'active', 'starts_at' => now()->subMonth()],
-        );
-
-        User::updateOrCreate(
-            ['email' => 'demo@clientloop.test'],
-            [
-                'company_id' => $company->id,
-                'name' => 'Marina Costa',
-                'email_verified_at' => now(),
-                'password' => Hash::make('clientloop123'),
-            ],
-        );
-
-        User::updateOrCreate(
-            ['email' => 'admin@clientloop.test'],
-            [
-                'name' => 'Administração ClientLoop',
-                'email_verified_at' => now(),
-                'password' => Hash::make('clientloop123'),
-                'is_super_admin' => true,
-            ],
-        );
+        $plan = Plan::firstOrCreate(['name' => 'Plano demonstração'], ['contact_limit' => 500, 'task_limit' => 1000, 'is_default' => false]);
+        $company = Company::updateOrCreate(['slug' => 'petshop-patinhas-demo'], [
+            'name' => 'Pet Shop Patinhas',
+            'timezone' => 'America/Sao_Paulo',
+            'status' => 'active',
+            'confirmation_hours' => 24,
+            'reactivation_months' => 6,
+            'business_days' => [1, 2, 3, 4, 5, 6],
+            'business_starts_at_hour' => 9,
+            'business_ends_at_hour' => 17,
+            'appointment_slot_minutes' => 60,
+        ]);
+        CompanySubscription::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id], ['plan_id' => $plan->id, 'status' => 'active', 'starts_at' => now()->subMonth()]);
+        User::updateOrCreate(['email' => 'demo@clientloop.test'], ['company_id' => $company->id, 'name' => 'Marina Costa', 'email_verified_at' => now(), 'password' => Hash::make('clientloop123')]);
+        User::updateOrCreate(['email' => 'admin@clientloop.test'], ['name' => 'Administração ClientLoop', 'email_verified_at' => now(), 'password' => Hash::make('clientloop123'), 'is_super_admin' => true]);
 
         $services = collect([
-            ['name' => 'Avaliação odontológica', 'suggested_price' => 180, 'return_interval_months' => 6],
-            ['name' => 'Limpeza e prevenção', 'suggested_price' => 250, 'return_interval_months' => 6],
-            ['name' => 'Clareamento dental', 'suggested_price' => 1200, 'return_interval_months' => 12],
-            ['name' => 'Implante dentário', 'suggested_price' => 4500, 'return_interval_months' => 12],
-        ])->mapWithKeys(fn (array $data) => [
-            $data['name'] => Service::withoutGlobalScopes()->updateOrCreate(
-                ['company_id' => $company->id, 'name' => $data['name']],
-                [...$data, 'company_id' => $company->id, 'active' => true],
-            ),
-        ]);
+            ['name' => 'Banho', 'suggested_price' => 45, 'duration_minutes' => 60],
+            ['name' => 'Tosa', 'suggested_price' => 80, 'duration_minutes' => 120],
+            ['name' => 'Banho com higiênico e hidratação', 'suggested_price' => 55, 'duration_minutes' => 60],
+        ])->mapWithKeys(fn (array $data) => [$data['name'] => Service::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'name' => $data['name']], [...$data, 'company_id' => $company->id, 'active' => true])]);
 
-        $customers = collect([
-            ['name' => 'Ana Beatriz Lima', 'phone' => '5511998765432', 'email' => 'ana.lima@example.test', 'tags' => ['recall', 'prevenção'], 'last_activity_at' => now()->subMonths(7), 'next_return_at' => now()->subWeeks(2)],
-            ['name' => 'Carlos Eduardo Alves', 'phone' => '5511987654321', 'email' => 'carlos.alves@example.test', 'tags' => ['novo lead'], 'last_activity_at' => now()->subDay()],
-            ['name' => 'Fernanda Souza', 'phone' => '5511976543210', 'email' => 'fernanda.souza@example.test', 'tags' => ['clareamento'], 'last_activity_at' => now()->subMonths(3), 'next_return_at' => now()->addMonth()],
-            ['name' => 'João Pedro Martins', 'phone' => '5511965432109', 'email' => 'joao.martins@example.test', 'tags' => ['reativação'], 'last_activity_at' => now()->subMonths(9)],
-            ['name' => 'Luciana Ribeiro', 'phone' => '5511954321098', 'email' => 'luciana.ribeiro@example.test', 'tags' => ['VIP'], 'last_activity_at' => now()->subMonths(2)],
-            ['name' => 'Paulo Henrique Reis', 'phone' => '5511943210987', 'email' => 'paulo.reis@example.test', 'tags' => ['não contatar'], 'last_activity_at' => now()->subYear(), 'opted_out_at' => now()->subMonth(), 'opt_out_note' => 'Solicitou não receber mensagens.'],
-        ])->mapWithKeys(fn (array $data) => [
-            $data['name'] => Customer::withoutGlobalScopes()->updateOrCreate(
-                ['company_id' => $company->id, 'phone' => $data['phone']],
-                [...$data, 'company_id' => $company->id],
-            ),
-        ]);
+        $responsibles = collect([
+            ['name' => 'Ana Beatriz Lima', 'phone' => '5511998765432'],
+            ['name' => 'Carlos Eduardo Alves', 'phone' => '5511987654321'],
+            ['name' => 'Fernanda Souza', 'phone' => '5511976543210'],
+            ['name' => 'João Pedro Martins', 'phone' => '5511965432109', 'last_activity_at' => now()->subMonths(9)],
+            ['name' => 'Mariana Oliveira', 'phone' => '5511954321098'],
+        ])->mapWithKeys(fn (array $data) => [$data['name'] => Customer::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'phone' => $data['phone']], [...$data, 'company_id' => $company->id])]);
 
-        $appointments = [
-            ['external_id' => 'demo-agenda-001', 'customer' => 'Ana Beatriz Lima', 'service' => 'Limpeza e prevenção', 'scheduled_at' => now()->addDay()->setTime(10, 0), 'status' => 'scheduled', 'potential_value' => 250, 'next_return_at' => now()->addMonths(6)],
-            ['external_id' => 'demo-agenda-002', 'customer' => 'Fernanda Souza', 'service' => 'Clareamento dental', 'scheduled_at' => now()->addDays(3)->setTime(14, 30), 'status' => 'confirmed', 'potential_value' => 1200],
-            ['external_id' => 'demo-agenda-003', 'customer' => 'Luciana Ribeiro', 'service' => 'Avaliação odontológica', 'scheduled_at' => now()->subDays(4)->setTime(9, 0), 'status' => 'completed', 'potential_value' => 180, 'realized_value' => 180],
+        $pets = collect([
+            ['name' => 'Thor', 'responsible' => 'Ana Beatriz Lima', 'species' => 'Cachorro', 'breed' => 'Shih-tzu', 'size' => 'small'],
+            ['name' => 'Mel', 'responsible' => 'Carlos Eduardo Alves', 'species' => 'Cachorro', 'breed' => 'Labrador', 'size' => 'large'],
+            ['name' => 'Nina', 'responsible' => 'Fernanda Souza', 'species' => 'Gato', 'breed' => 'Siamês', 'size' => 'small'],
+            ['name' => 'Bob', 'responsible' => 'João Pedro Martins', 'species' => 'Cachorro', 'breed' => 'Vira-lata', 'size' => 'medium'],
+            ['name' => 'Amora', 'responsible' => 'Mariana Oliveira', 'species' => 'Cachorro', 'breed' => 'Poodle', 'size' => 'small'],
+            ['name' => 'Pingo', 'responsible' => 'Mariana Oliveira', 'species' => 'Gato', 'breed' => 'SRD', 'size' => 'small'],
+        ])->mapWithKeys(fn (array $data) => [$data['name'] => Pet::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'customer_id' => $responsibles[$data['responsible']]->id, 'name' => $data['name']], ['species' => $data['species'], 'breed' => $data['breed'], 'size' => $data['size']])]);
+
+        $offerDefinitions = [
+            ['name' => '4 banhos', 'sequence' => ['Banho', 'Banho', 'Banho', 'Banho com higiênico e hidratação'], 'suggested_price' => 160],
+            ['name' => '4 tosas', 'sequence' => ['Tosa', 'Tosa', 'Tosa', 'Tosa'], 'suggested_price' => 290],
         ];
+        $offers = collect($offerDefinitions)->mapWithKeys(function (array $data) use ($company, $services): array {
+            $offer = PackageOffer::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'name' => $data['name']], [
+                'service_id' => $services[$data['sequence'][0]]->id,
+                'credits' => count($data['sequence']),
+                'suggested_price' => $data['suggested_price'],
+                'active' => true,
+            ]);
+            $offer->items()->delete();
+            foreach ($data['sequence'] as $position => $serviceName) {
+                $offer->items()->create(['company_id' => $company->id, 'service_id' => $services[$serviceName]->id, 'position' => $position + 1]);
+            }
 
-        $createdAppointments = collect($appointments)->mapWithKeys(function (array $data) use ($company, $customers, $services) {
-            $appointment = Appointment::withoutGlobalScopes()->updateOrCreate(
-                ['company_id' => $company->id, 'external_id' => $data['external_id']],
-                [
-                    'customer_id' => $customers[$data['customer']]->id,
-                    'service_id' => $services[$data['service']]->id,
-                    'scheduled_at' => $data['scheduled_at'],
-                    'status' => $data['status'],
-                    'potential_value' => $data['potential_value'],
-                    'realized_value' => $data['realized_value'] ?? null,
-                    'next_return_at' => $data['next_return_at'] ?? null,
-                    'origin' => 'manual',
-                ],
-            );
+            return [$data['name'] => $offer->fresh()];
+        });
 
-            return [$data['external_id'] => $appointment];
+        $packages = [
+            'thor' => PetPackage::withoutGlobalScopes()->firstOrCreate(
+                ['company_id' => $company->id, 'pet_id' => $pets['Thor']->id, 'package_offer_id' => $offers['4 banhos']->id],
+                $this->packageAttributes($offers['4 banhos'], 'paid', today()->subDays(10)),
+            ),
+            'mel' => PetPackage::withoutGlobalScopes()->firstOrCreate(
+                ['company_id' => $company->id, 'pet_id' => $pets['Mel']->id, 'package_offer_id' => $offers['4 tosas']->id],
+                $this->packageAttributes($offers['4 tosas'], 'pending', today()),
+            ),
+            'amora' => PetPackage::withoutGlobalScopes()->firstOrCreate(
+                ['company_id' => $company->id, 'pet_id' => $pets['Amora']->id, 'package_offer_id' => $offers['4 banhos']->id],
+                $this->packageAttributes($offers['4 banhos'], 'paid', today()->subDays(3)),
+            ),
+        ];
+        foreach (['thor' => '4 banhos', 'mel' => '4 tosas', 'amora' => '4 banhos'] as $packageKey => $offerName) {
+            $package = $packages[$packageKey];
+            $offer = $offers[$offerName];
+            $package->update(['name' => $offer->name, 'service_id' => $offer->service_id, 'total_credits' => $offer->credits]);
+            $package->items()->delete();
+            foreach ($offer->items()->with('service')->orderBy('position')->get() as $item) {
+                $package->items()->create(['company_id' => $company->id, 'service_id' => $item->service_id, 'service_name' => $item->service->name, 'duration_minutes' => $item->service->duration_minutes, 'position' => $item->position]);
+            }
+            $packages[$packageKey] = $package->fresh();
+        }
+
+        $nextBusinessDay = $this->nextBusinessDay();
+        $followingBusinessDay = $this->nextBusinessDay($nextBusinessDay);
+        $lastBusinessDay = $this->previousBusinessDay();
+
+        $appointments = collect([
+            ['key' => 'thor-agendado', 'pet' => 'Thor', 'service' => 'Banho', 'scheduled_at' => $nextBusinessDay->copy()->setTime(9, 0), 'status' => 'scheduled', 'package' => 'thor'],
+            ['key' => 'mel-confirmado', 'pet' => 'Mel', 'service' => 'Tosa', 'scheduled_at' => $nextBusinessDay->copy()->setTime(11, 0), 'status' => 'confirmed'],
+            ['key' => 'amora-agendado', 'pet' => 'Amora', 'service' => 'Banho', 'scheduled_at' => $nextBusinessDay->copy()->setTime(14, 0), 'status' => 'scheduled', 'package' => 'amora'],
+            ['key' => 'nina-confirmado', 'pet' => 'Nina', 'service' => 'Banho com higiênico e hidratação', 'scheduled_at' => $followingBusinessDay->copy()->setTime(10, 0), 'status' => 'confirmed'],
+            ['key' => 'thor-concluido', 'pet' => 'Thor', 'service' => 'Banho', 'scheduled_at' => $lastBusinessDay->copy()->setTime(9, 0), 'status' => 'completed', 'package' => 'thor'],
+        ])->mapWithKeys(function (array $data) use ($company, $pets, $responsibles, $services, $packages): array {
+            $pet = $pets[$data['pet']];
+            $service = $services[$data['service']];
+            $appointment = Appointment::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'pet_id' => $pet->id, 'service_id' => $service->id, 'scheduled_at' => $data['scheduled_at']], [
+                'customer_id' => $responsibles->firstWhere('id', $pet->customer_id)->id, 'pet_id' => $pet->id, 'service_id' => $service->id, 'pet_package_id' => isset($data['package']) ? $packages[$data['package']]->id : null,
+                'scheduled_at' => $data['scheduled_at'], 'duration_minutes' => $service->duration_minutes, 'status' => $data['status'],
+            ]);
+
+            return [$data['key'] => $appointment];
         });
 
         $templates = collect([
-            ['name' => 'Confirmação de agenda', 'type' => 'confirmation', 'body' => 'Olá, {{cliente}}! Passando para confirmar seu agendamento de {{servico}} em {{data}} às {{horario}}. Podemos confirmar sua presença?'],
-            ['name' => 'Retorno preventivo', 'type' => 'recall', 'body' => 'Olá, {{cliente}}! Já está na hora do seu retorno preventivo. Queremos cuidar do seu sorriso. Posso verificar os próximos horários?'],
-            ['name' => 'Reativação', 'type' => 'reactivation', 'body' => 'Olá, {{cliente}}! Sentimos sua falta na {{empresa}}. Temos horários disponíveis para você retomar seus cuidados. Quer agendar uma avaliação?'],
-        ])->mapWithKeys(fn (array $data) => [$data['name'] => MessageTemplate::withoutGlobalScopes()->updateOrCreate(
-            ['company_id' => $company->id, 'name' => $data['name']],
-            [...$data, 'company_id' => $company->id, 'active' => true],
-        )]);
+            ['name' => 'Confirmação de banho', 'type' => 'confirmation', 'body' => 'Olá, {{responsavel}}! O banho de {{pet}} está marcado para {{data}} às {{horario}}. Podemos confirmar?'],
+            ['name' => 'Hora de voltar', 'type' => 'recall', 'body' => 'Olá, {{responsavel}}! Sentimos falta de {{pet}} na {{empresa}}. Quer agendar um banho?'],
+            ['name' => 'Reativação', 'type' => 'reactivation', 'body' => 'Olá, {{responsavel}}! Faz um tempo que não vemos {{pet}}. Quer reservar um horário?'],
+        ])->mapWithKeys(fn (array $data) => [$data['name'] => MessageTemplate::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'name' => $data['name']], [...$data, 'company_id' => $company->id, 'active' => true])]);
 
-        $opportunities = [
-            ['customer' => 'Carlos Eduardo Alves', 'service' => 'Implante dentário', 'title' => 'Orçamento de implante unitário', 'stage' => 'proposal', 'urgency' => 'high', 'potential_value' => 4500, 'next_follow_up_at' => now()->addDay(), 'notes' => 'Solicitou condições de pagamento.'],
-            ['customer' => 'Fernanda Souza', 'service' => 'Clareamento dental', 'title' => 'Clareamento para casamento', 'stage' => 'scheduling', 'urgency' => 'normal', 'potential_value' => 1200, 'next_follow_up_at' => now()->addDays(2), 'notes' => 'Quer concluir antes do casamento.'],
-            ['customer' => 'Luciana Ribeiro', 'service' => 'Avaliação odontológica', 'title' => 'Avaliação concluída', 'stage' => 'won', 'urgency' => 'normal', 'potential_value' => 180, 'realized_value' => 180, 'appointment_id' => $createdAppointments['demo-agenda-003']->id],
+        $campaign = Campaign::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'name' => 'Pets para reativar'], ['type' => 'reactivation', 'status' => 'draft', 'message_template_id' => $templates['Reativação']->id, 'filters' => ['months_inactive' => 6]]);
+        ContactTask::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'appointment_id' => $appointments['thor-agendado']->id, 'type' => 'confirmation'], ['customer_id' => $responsibles['Ana Beatriz Lima']->id, 'message_template_id' => $templates['Confirmação de banho']->id, 'priority' => 'high', 'due_at' => now(), 'rendered_message' => 'Olá, Ana Beatriz Lima! O banho de Thor está marcado para '.$nextBusinessDay->format('d/m').' às 09:00. Podemos confirmar?', 'status' => 'pending']);
+        ContactTask::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'appointment_id' => $appointments['amora-agendado']->id, 'type' => 'confirmation'], ['customer_id' => $responsibles['Mariana Oliveira']->id, 'message_template_id' => $templates['Confirmação de banho']->id, 'priority' => 'normal', 'due_at' => now()->addHour(), 'rendered_message' => 'Olá, Mariana Oliveira! O banho de Amora está marcado para '.$nextBusinessDay->format('d/m').' às 14:00. Podemos confirmar?', 'status' => 'pending']);
+        ContactTask::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'customer_id' => $responsibles['João Pedro Martins']->id, 'type' => 'reactivation'], ['campaign_id' => $campaign->id, 'message_template_id' => $templates['Reativação']->id, 'priority' => 'normal', 'due_at' => now()->subHour(), 'rendered_message' => 'Olá, João Pedro Martins! Faz um tempo que não vemos Bob. Quer reservar um horário?', 'status' => 'pending']);
+
+        PackageRedemption::withoutGlobalScopes()->updateOrCreate(['appointment_id' => $appointments['thor-concluido']->id], ['company_id' => $company->id, 'pet_package_id' => $packages['thor']->id, 'pet_package_item_id' => $packages['thor']->items()->orderBy('position')->first()?->id, 'redeemed_at' => now()->subDay()]);
+    }
+
+    private function nextBusinessDay(?Carbon $after = null): Carbon
+    {
+        $date = ($after ?? now('America/Sao_Paulo'))->copy()->startOfDay();
+
+        do {
+            $date->addDay();
+        } while ($date->isSunday());
+
+        return $date;
+    }
+
+    private function previousBusinessDay(): Carbon
+    {
+        $date = now('America/Sao_Paulo')->copy()->startOfDay();
+
+        do {
+            $date->subDay();
+        } while ($date->isSunday());
+
+        return $date;
+    }
+
+    /** @return array<string, mixed> */
+    private function packageAttributes(PackageOffer $offer, string $paymentStatus, Carbon $purchasedAt): array
+    {
+        return [
+            'name' => $offer->name,
+            'service_id' => $offer->service_id,
+            'total_credits' => $offer->credits,
+            'price' => $offer->suggested_price,
+            'payment_status' => $paymentStatus,
+            'purchased_at' => $purchasedAt,
         ];
-
-        collect($opportunities)->each(function (array $data) use ($company, $customers, $services): void {
-            Opportunity::withoutGlobalScopes()->updateOrCreate(
-                ['company_id' => $company->id, 'title' => $data['title']],
-                [
-                    ...Arr::except($data, ['customer', 'service']),
-                    'company_id' => $company->id,
-                    'customer_id' => $customers[$data['customer']]->id,
-                    'service_id' => $services[$data['service']]->id,
-                ],
-            );
-        });
-
-        $campaign = Campaign::withoutGlobalScopes()->updateOrCreate(
-            ['company_id' => $company->id, 'name' => 'Reativação - pacientes inativos'],
-            ['type' => 'reactivation', 'status' => 'draft', 'message_template_id' => $templates['Reativação']->id, 'filters' => ['months_inactive' => 6]],
-        );
-
-        $tasks = [
-            ['customer' => 'Ana Beatriz Lima', 'appointment_id' => $createdAppointments['demo-agenda-001']->id, 'template' => 'Confirmação de agenda', 'type' => 'confirmation', 'priority' => 'high', 'due_at' => now(), 'message' => 'Olá, Ana Beatriz Lima! Passando para confirmar seu agendamento de Limpeza e prevenção amanhã às 10:00. Podemos confirmar sua presença?'],
-            ['customer' => 'Carlos Eduardo Alves', 'template' => null, 'type' => 'follow_up', 'priority' => 'high', 'due_at' => now()->addDay(), 'message' => 'Olá, Carlos! Conseguiu avaliar a proposta do implante? Posso ajudar com alguma dúvida?'],
-            ['customer' => 'João Pedro Martins', 'template' => 'Reativação', 'type' => 'reactivation', 'priority' => 'normal', 'due_at' => now()->subHour(), 'message' => 'Olá, João Pedro Martins! Sentimos sua falta na Clínica Sorriso & Saúde. Quer agendar uma avaliação?'],
-            ['customer' => 'Ana Beatriz Lima', 'template' => 'Retorno preventivo', 'type' => 'recall', 'priority' => 'normal', 'due_at' => now()->subDay(), 'status' => 'completed', 'outcome' => 'scheduled', 'completed_at' => now()->subHours(20), 'message' => 'Olá, Ana Beatriz Lima! Já está na hora do seu retorno preventivo. Posso verificar os próximos horários?'],
-        ];
-
-        foreach ($tasks as $data) {
-            ContactTask::withoutGlobalScopes()->updateOrCreate(
-                ['company_id' => $company->id, 'customer_id' => $customers[$data['customer']]->id, 'type' => $data['type'], 'rendered_message' => $data['message']],
-                [
-                    'appointment_id' => $data['appointment_id'] ?? null,
-                    'message_template_id' => $data['template'] ? $templates[$data['template']]->id : null,
-                    'campaign_id' => $data['type'] === 'reactivation' ? $campaign->id : null,
-                    'status' => $data['status'] ?? 'pending',
-                    'priority' => $data['priority'],
-                    'due_at' => $data['due_at'],
-                    'outcome' => $data['outcome'] ?? null,
-                    'completed_at' => $data['completed_at'] ?? null,
-                ],
-            );
-        }
     }
 }

@@ -1,5 +1,5 @@
 FROM php:8.3-cli
-RUN apt-get update && apt-get install -y git unzip libicu-dev libpq-dev libzip-dev && docker-php-ext-install intl pdo_pgsql zip
+RUN apt-get update && apt-get install -y git unzip libicu-dev libpq-dev libsqlite3-dev libzip-dev && docker-php-ext-install intl pdo_pgsql pdo_sqlite zip
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 COPY . .

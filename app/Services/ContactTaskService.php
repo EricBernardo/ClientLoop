@@ -22,7 +22,7 @@ class ContactTaskService
         }
         $template ??= MessageTemplate::withoutGlobalScopes()->where('company_id', $company->id)->where('type', $type)->where('active', true)->first();
         $cycleKey = $links['cycle_key'] ?? null;
-        $existing = ContactTask::withoutGlobalScopes()->where('company_id', $company->id)->where('customer_id', $customer->id)->where('type', $type)->when($cycleKey, fn ($query) => $query->where('cycle_key', $cycleKey))->when($links['appointment'] ?? null, fn ($q, $a) => $q->where('appointment_id', $a->id))->when($links['opportunity'] ?? null, fn ($q, $o) => $q->where('opportunity_id', $o->id))->exists();
+        $existing = ContactTask::withoutGlobalScopes()->where('company_id', $company->id)->where('customer_id', $customer->id)->where('type', $type)->when($cycleKey, fn ($query) => $query->where('cycle_key', $cycleKey))->when($links['appointment'] ?? null, fn ($q, $a) => $q->where('appointment_id', $a->id))->exists();
         if ($existing) {
             return null;
         }
@@ -31,7 +31,7 @@ class ContactTaskService
             $this->quota->consumeTasks($company);
             $appointment = $links['appointment'] ?? null;
 
-            return ContactTask::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'appointment_id' => $appointment?->id, 'opportunity_id' => ($links['opportunity'] ?? null)?->id, 'campaign_id' => ($links['campaign'] ?? null)?->id, 'message_template_id' => $template?->id, 'type' => $type, 'cycle_key' => $links['cycle_key'] ?? null, 'priority' => $type === 'confirmation' ? 'high' : 'normal', 'due_at' => $dueAt, 'rendered_message' => $template ? $this->renderer->render($template->body, $customer, $links['service'] ?? null, $appointment?->scheduled_at) : null]);
+            return ContactTask::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'appointment_id' => $appointment?->id, 'campaign_id' => ($links['campaign'] ?? null)?->id, 'message_template_id' => $template?->id, 'type' => $type, 'cycle_key' => $links['cycle_key'] ?? null, 'priority' => $type === 'confirmation' ? 'high' : 'normal', 'due_at' => $dueAt, 'rendered_message' => $template ? $this->renderer->render($template->body, $customer, $links['service'] ?? null, $appointment?->scheduled_at, $appointment?->pet) : null]);
         });
     }
 
@@ -40,7 +40,7 @@ class ContactTaskService
         if (($task->status ?? 'pending') !== 'pending') {
             throw ValidationException::withMessages(['task' => 'A tarefa já foi encerrada.']);
         }
-        if (! in_array($outcome, ['confirmed', 'reschedule_requested', 'interested', 'scheduled', 'no_response', 'lost', 'opt_out'], true)) {
+        if (! in_array($outcome, ['confirmed', 'reschedule_requested', 'scheduled', 'no_response', 'opt_out'], true)) {
             throw ValidationException::withMessages(['outcome' => 'Resultado inválido.']);
         }
         DB::transaction(function () use ($task, $outcome, $note) {
@@ -51,9 +51,6 @@ class ContactTaskService
             }
             if ($task->appointment) {
                 $this->applyAppointmentOutcome($task->appointment, $outcome);
-            }
-            if ($task->opportunity) {
-                $this->applyOpportunityOutcome($task, $outcome, $note);
             }
             $this->log($task->company_id, 'contact_task.completed', $task, ['outcome' => $outcome, 'note' => $note]);
         });
@@ -97,29 +94,6 @@ class ContactTaskService
             $appointment->update(['status' => 'confirmed']);
         } if ($outcome === 'reschedule_requested') {
             $appointment->update(['status' => 'reschedule_requested']);
-        }
-    }
-
-    private function applyOpportunityOutcome(ContactTask $task, string $outcome, ?string $note): void
-    {
-        $opportunity = $task->opportunity;
-        if ($outcome === 'interested') {
-            $opportunity->update(['stage' => 'qualification']);
-        }
-        if ($outcome === 'scheduled') {
-            $opportunity->update(['stage' => 'scheduling']);
-        }
-        if ($outcome === 'lost') {
-            $opportunity->update(['stage' => 'lost', 'loss_reason' => $opportunity->loss_reason ?? 'other', 'notes' => trim(($opportunity->notes ?? '')."\n".$note)]);
-        }
-        if (in_array($outcome, ['scheduled', 'lost', 'opt_out'], true)) {
-            $opportunity->update(['next_follow_up_at' => null]);
-        }
-        if ($outcome === 'no_response' && $task->type === 'follow_up') {
-            $completed = ContactTask::withoutGlobalScopes()->where('opportunity_id', $opportunity->id)->where('type', 'follow_up')->where('status', 'completed')->count();
-            $days = $opportunity->company->follow_up_days ?? [1, 3, 7];
-            $next = $days[$completed] ?? null;
-            $opportunity->update(['next_follow_up_at' => $next ? now()->addDays($next) : null]);
         }
     }
 

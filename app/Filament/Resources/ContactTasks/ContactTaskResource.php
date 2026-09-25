@@ -2,15 +2,16 @@
 
 namespace App\Filament\Resources\ContactTasks;
 
+use App\Filament\Forms\Components\HourlyDateTimePicker;
 use App\Filament\Resources\ContactTasks\Pages\ListContactTasks;
 use App\Models\ContactTask;
 use App\Services\ContactTaskService;
+use App\Support\InterfaceLabels;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\Resource;
@@ -26,6 +27,13 @@ class ContactTaskResource extends Resource
     protected static ?string $model = ContactTask::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+
+    protected static ?int $navigationSort = 6;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     public static function getNavigationLabel(): string
     {
@@ -46,30 +54,33 @@ class ContactTaskResource extends Resource
     {
         return $schema
             ->components([
-                Select::make('customer_id')->relationship('customer', 'name')->searchable()->preload()->required(), Select::make('type')->options(['confirmation' => 'Confirmação', 'recall' => 'Recall', 'reactivation' => 'Reativação', 'follow_up' => 'Follow-up'])->required(), Select::make('priority')->options(['low' => 'Baixa', 'normal' => 'Normal', 'high' => 'Alta'])->default('normal'), DateTimePicker::make('due_at')->required(), Textarea::make('rendered_message')->columnSpanFull(),
+                Select::make('customer_id')->label('Responsável')->relationship('customer', 'name')->searchable()->preload()->required(), Select::make('type')->label('Tipo')->options(InterfaceLabels::contactTypes())->searchable()->required(), Select::make('priority')->label('Prioridade')->options(InterfaceLabels::priorities())->searchable()->default('normal'), HourlyDateTimePicker::make('due_at')->label('Vencimento')->required(), Textarea::make('rendered_message')->label('Mensagem preparada')->columnSpanFull(),
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultSort('due_at', 'asc')
             ->modifyQueryUsing(function (Builder $query): Builder {
                 return match (request('view')) {
+                    'pending' => $query->where('status', 'pending'),
                     'today' => $query->where('status', 'pending')->whereDate('due_at', today()),
                     'late' => $query->where('status', 'pending')->where('due_at', '<', now()),
+                    'confirmation' => $query->where('status', 'pending')->where('type', 'confirmation'),
                     'month' => $query->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()]),
                     default => $query,
                 };
             })
             ->columns([
-                TextColumn::make('customer.name')->label('Cliente')->searchable(), TextColumn::make('type')->badge(), TextColumn::make('priority')->badge(), TextColumn::make('due_at')->dateTime('d/m H:i')->sortable(), TextColumn::make('status')->badge(), TextColumn::make('outcome')->badge(),
+                TextColumn::make('customer.name')->label('Responsável')->searchable(), TextColumn::make('type')->label('Tipo')->badge()->color(fn (?string $state): string => InterfaceLabels::contactTypeColor($state))->formatStateUsing(fn (?string $state): string => InterfaceLabels::contactType($state)), TextColumn::make('priority')->label('Prioridade')->badge()->color(fn (?string $state): string => InterfaceLabels::priorityColor($state))->formatStateUsing(fn (?string $state): string => InterfaceLabels::priority($state)), TextColumn::make('due_at')->label('Vencimento')->dateTime('d/m H:i')->sortable(), TextColumn::make('status')->label('Situação')->badge()->color(fn (?string $state): string => InterfaceLabels::taskStatusColor($state))->formatStateUsing(fn (?string $state): string => InterfaceLabels::taskStatus($state)), TextColumn::make('outcome')->label('Resultado')->badge()->color(fn (?string $state): string => InterfaceLabels::taskOutcomeColor($state))->formatStateUsing(fn (?string $state): string => InterfaceLabels::taskOutcome($state)),
             ])
             ->filters([
-                SelectFilter::make('status')->options(['pending' => 'Pendente', 'completed' => 'Concluída', 'cancelled' => 'Cancelada']), SelectFilter::make('type')->options(['confirmation' => 'Confirmação', 'recall' => 'Recall', 'reactivation' => 'Reativação', 'follow_up' => 'Follow-up']),
+                SelectFilter::make('status')->label('Situação')->options(['pending' => 'Pendente', 'completed' => 'Concluída', 'cancelled' => 'Cancelada'])->searchable(), SelectFilter::make('type')->label('Tipo')->options(InterfaceLabels::contactTypes())->searchable(),
             ])
             ->recordActions([
-                Action::make('whatsapp')->label('Abrir WhatsApp')->icon('heroicon-o-chat-bubble-left-right')->url(fn (ContactTask $record) => $record->whatsappUrl())->openUrlInNewTab()->visible(fn (ContactTask $record) => $record->status === 'pending' && $record->whatsappUrl() !== null),
-                Action::make('registrar')->label('Registrar resultado')->visible(fn (ContactTask $record) => $record->status === 'pending')->form([Select::make('outcome')->label('Resultado')->options(['confirmed' => 'Confirmou', 'reschedule_requested' => 'Pediu alteração', 'interested' => 'Interessado', 'scheduled' => 'Agendou', 'no_response' => 'Sem resposta', 'lost' => 'Perdido', 'opt_out' => 'Não receber contato'])->required(), Textarea::make('note')->label('Observação')])->action(fn (ContactTask $record, array $data) => app(ContactTaskService::class)->complete($record, $data['outcome'], $data['note'] ?? null)),
+                Action::make('whatsapp')->label('Abrir WhatsApp')->color('success')->icon('heroicon-o-chat-bubble-left-right')->url(fn (ContactTask $record) => $record->whatsappUrl())->openUrlInNewTab()->visible(fn (ContactTask $record) => $record->status === 'pending' && $record->whatsappUrl() !== null),
+                Action::make('registrar')->label('Registrar resultado')->color('info')->visible(fn (ContactTask $record) => $record->status === 'pending')->form([Select::make('outcome')->label('Resultado')->options(['confirmed' => 'Confirmou', 'reschedule_requested' => 'Pediu alteração', 'scheduled' => 'Agendou', 'no_response' => 'Sem resposta', 'opt_out' => 'Não receber contato'])->searchable()->required(), Textarea::make('note')->label('Observação')])->action(fn (ContactTask $record, array $data) => app(ContactTaskService::class)->complete($record, $data['outcome'], $data['note'] ?? null)),
                 DeleteAction::make(),
             ])
             ->toolbarActions([

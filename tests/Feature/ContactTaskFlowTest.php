@@ -22,13 +22,13 @@ class ContactTaskFlowTest extends TestCase
     public function test_task_uses_whatsapp_link_and_opt_out_cancels_pending_work(): void
     {
         $plan = Plan::create(['name' => 'Trial', 'contact_limit' => 10, 'task_limit' => 10, 'is_default' => true]);
-        $company = Company::create(['name' => 'Empresa', 'slug' => 'empresa', 'follow_up_days' => [1, 3, 7]]);
+        $company = Company::create(['name' => 'Empresa', 'slug' => 'empresa']);
         CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id]);
         $user = User::create(['company_id' => $company->id, 'name' => 'Ana', 'email' => 'ana@example.test', 'password' => 'password-password']);
         $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Maria', 'phone' => '5511999999999']);
 
         $this->actingAs($user);
-        $task = app(ContactTaskService::class)->create($company, $customer, 'follow_up', now(), []);
+        $task = app(ContactTaskService::class)->create($company, $customer, 'reactivation', now(), []);
 
         $this->assertNotNull($task);
         $this->assertStringContainsString('wa.me/5511999999999', $task->whatsappUrl());

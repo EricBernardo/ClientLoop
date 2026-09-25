@@ -22,9 +22,9 @@ class RegistrationController extends Controller
     {
         $data = $request->validate(['company_name' => ['required', 'string', 'max:120'], 'name' => ['required', 'string', 'max:120'], 'email' => ['required', 'email', 'max:255', 'unique:users,email'], 'password' => ['required', 'confirmed', 'min:12']]);
         $user = DB::transaction(function () use ($data) {
-            $company = Company::create(['name' => $data['company_name'], 'slug' => Str::slug($data['company_name']).'-'.Str::lower(Str::random(6)), 'follow_up_days' => [1, 3, 7]]);
+            $company = Company::create(['name' => $data['company_name'], 'slug' => Str::slug($data['company_name']).'-'.Str::lower(Str::random(6))]);
             $plan = Plan::where('is_default', true)->first() ?? Plan::firstOrCreate(
-                ['name' => 'Trial'],
+                ['name' => 'Teste gratuito'],
                 ['contact_limit' => 500, 'task_limit' => 1000, 'is_default' => true],
             );
             CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'trial', 'starts_at' => now()]);

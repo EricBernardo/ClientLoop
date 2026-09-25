@@ -16,12 +16,13 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class SuperPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel->id('super')->path('super')->login()->profile(isSimple: false)->colors(['primary' => Color::Indigo])->discoverResources(in: app_path('Filament/Super/Resources'), for: 'App\\Filament\\Super\\Resources')->pages([Dashboard::class])->widgets([AccountWidget::class])->middleware([EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class, AuthenticateSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class, SubstituteBindings::class, DisableBladeIconComponents::class, DispatchServingFilamentEvent::class])->authMiddleware([Authenticate::class]);
+        return $panel->id('super')->path('platform')->login()->profile(isSimple: false)->brandName('ClientLoop')->brandLogo(new HtmlString('<span style="display:flex;align-items:center;gap:.5rem;font-size:1.2rem;font-weight:800;letter-spacing:-.04em;color:#172033"><img src="/images/clientloop-symbol.png" alt="" style="width:2rem;height:2rem"><span>Client<span style="color:#0f766e">Loop</span></span></span>'))->darkModeBrandLogo(new HtmlString('<span style="display:flex;align-items:center;gap:.5rem;font-size:1.2rem;font-weight:800;letter-spacing:-.04em;color:#f8fafc"><img src="/images/clientloop-symbol.png" alt="" style="width:2rem;height:2rem"><span>Client<span style="color:#7dd3c7">Loop</span></span></span>'))->brandLogoHeight('2rem')->favicon('/images/clientloop-symbol.png')->colors(['primary' => Color::Indigo])->discoverResources(in: app_path('Filament/Super/Resources'), for: 'App\\Filament\\Super\\Resources')->pages([Dashboard::class])->widgets([AccountWidget::class])->middleware([EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class, AuthenticateSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class, SubstituteBindings::class, DisableBladeIconComponents::class, DispatchServingFilamentEvent::class])->authMiddleware([Authenticate::class]);
     }
 }

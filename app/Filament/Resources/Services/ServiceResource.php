@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Services;
 
+use App\Filament\Forms\Components\BrlMoneyInput;
 use App\Filament\Resources\Services\Pages\CreateService;
 use App\Filament\Resources\Services\Pages\EditService;
 use App\Filament\Resources\Services\Pages\ListServices;
@@ -26,6 +27,8 @@ class ServiceResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
+    protected static ?int $navigationSort = 4;
+
     public static function getNavigationLabel(): string
     {
         return 'Serviços';
@@ -45,7 +48,7 @@ class ServiceResource extends Resource
     {
         return $schema
             ->components([
-                TextInput::make('name')->required(), TextInput::make('suggested_price')->numeric()->prefix('R$'), TextInput::make('return_interval_months')->numeric()->label('Retorno padrão (meses)'), Toggle::make('active')->default(true),
+                TextInput::make('name')->label('Nome')->required(), BrlMoneyInput::make('suggested_price')->label('Preço sugerido'), TextInput::make('duration_minutes')->label('Duração padrão (minutos)')->numeric()->integer()->minValue(5)->default(60)->required(), TextInput::make('return_interval_months')->numeric()->integer()->minValue(1)->label('Retorno padrão (meses)')->hintIcon(Heroicon::OutlinedInformationCircle, tooltip: 'Depois de concluir o último atendimento ou pacote, o sistema prevê o próximo retorno usando esta quantidade de meses. Deixe em branco se este serviço não tiver retorno automático.'), Toggle::make('active')->label('Ativo')->default(true),
             ]);
     }
 
@@ -53,7 +56,7 @@ class ServiceResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')->searchable(), TextColumn::make('suggested_price')->money('BRL'), TextColumn::make('return_interval_months')->suffix(' meses'), IconColumn::make('active')->boolean(),
+                TextColumn::make('name')->label('Nome')->searchable(), TextColumn::make('duration_minutes')->label('Duração')->suffix(' min'), TextColumn::make('suggested_price')->label('Preço sugerido')->money('BRL'), TextColumn::make('return_interval_months')->label('Retorno padrão')->suffix(' meses'), IconColumn::make('active')->label('Ativo')->boolean(),
             ])
             ->filters([
                 //

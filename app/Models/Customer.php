@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Customer extends TenantModel
 {
-    protected $fillable = ['company_id', 'name', 'phone', 'email', 'tags', 'notes', 'last_activity_at', 'next_return_at', 'opted_out_at', 'opt_out_note'];
+    protected $fillable = ['company_id', 'name', 'phone', 'notes', 'last_activity_at', 'next_return_at', 'opted_out_at', 'opt_out_note'];
 
     protected function casts(): array
     {
-        return ['tags' => 'array', 'last_activity_at' => 'datetime', 'next_return_at' => 'datetime', 'opted_out_at' => 'datetime'];
+        return ['last_activity_at' => 'datetime', 'next_return_at' => 'datetime', 'opted_out_at' => 'datetime'];
     }
 
     public function appointments(): HasMany
@@ -18,9 +18,9 @@ class Customer extends TenantModel
         return $this->hasMany(Appointment::class);
     }
 
-    public function opportunities(): HasMany
+    public function pets(): HasMany
     {
-        return $this->hasMany(Opportunity::class);
+        return $this->hasMany(Pet::class);
     }
 
     public function tasks(): HasMany

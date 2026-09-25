@@ -12,6 +12,6 @@ class ListCustomers extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()->label('Novo cliente')->url(CustomerResource::getUrl('create'))];
+        return [CreateAction::make()->label('Novo responsável')->url(CustomerResource::getUrl('create'))];
     }
 }

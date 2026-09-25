@@ -13,6 +13,22 @@ class ImportRun extends TenantModel
         return ['errors' => 'array', 'mapping' => 'array'];
     }
 
+    /** @return array<int|string, string> */
+    public function displayErrors(): array
+    {
+        return collect($this->errors ?? [])
+            ->map(function (mixed $message): string {
+                $message = (string) $message;
+
+                if (str_contains($message, 'SplFileObject::__construct') && str_contains($message, 'Failed to open stream')) {
+                    return 'O arquivo enviado não estava disponível para o processamento. Envie o CSV novamente.';
+                }
+
+                return $message;
+            })
+            ->all();
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

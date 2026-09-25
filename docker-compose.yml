@@ -2,18 +2,22 @@ services:
   app:
     build: .
     ports: ["8000:8000"]
+    command: sh docker/start-app.sh
     env_file: .env
     depends_on: [postgres, mailpit]
+    volumes: [".:/var/www/html", "storage-data:/var/www/html/storage"]
   worker:
     build: .
-    command: php artisan queue:work --tries=3 --timeout=120
+    command: sh -lc "mkdir -p storage/app/private/imports storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs && php artisan queue:work --tries=3 --timeout=120"
     env_file: .env
     depends_on: [postgres]
+    volumes: [".:/var/www/html", "storage-data:/var/www/html/storage"]
   scheduler:
     build: .
-    command: php artisan schedule:work
+    command: sh -lc "mkdir -p storage/app/private/imports storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs && php artisan schedule:work"
     env_file: .env
     depends_on: [postgres]
+    volumes: [".:/var/www/html", "storage-data:/var/www/html/storage"]
   postgres:
     image: postgres:18
     environment:
@@ -27,3 +31,4 @@ services:
     ports: ["8025:8025", "1025:1025"]
 volumes:
   postgres-data:
+  storage-data:

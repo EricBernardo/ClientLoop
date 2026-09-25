@@ -8,11 +8,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Company extends Model
 {
-    protected $fillable = ['name', 'slug', 'timezone', 'status', 'confirmation_hours', 'reactivation_months', 'follow_up_days'];
+    protected $fillable = ['name', 'slug', 'timezone', 'status', 'confirmation_hours', 'reactivation_months', 'business_days', 'business_starts_at_hour', 'business_ends_at_hour', 'appointment_slot_minutes'];
 
     protected function casts(): array
     {
-        return ['follow_up_days' => 'array'];
+        return ['business_days' => 'array'];
     }
 
     public function users(): HasMany

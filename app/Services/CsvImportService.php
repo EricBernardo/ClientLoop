@@ -2,10 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\Appointment;
 use App\Models\Company;
 use App\Models\Customer;
-use App\Models\Service;
+use App\Models\Pet;
 use Carbon\Carbon;
 
 class CsvImportService
@@ -16,44 +15,28 @@ class CsvImportService
     public function customers(Company $company, string $path, array $mapping = []): array
     {
         return $this->rows($path, function (array $row) use ($company) {
-            $phone = $this->phones->normalize($row['phone'] ?? '');
+            $name = trim((string) ($row['responsible_name'] ?? $row['name'] ?? $row['customer_name'] ?? ''));
+            if ($name === '') {
+                throw new \InvalidArgumentException('Informe o nome do responsável.');
+            }
+            $phone = $this->phones->normalize($row['responsible_phone'] ?? $row['phone'] ?? '');
             $customer = Customer::withoutGlobalScopes()->where('company_id', $company->id)->where('phone', $phone)->first();
-            $payload = ['name' => $row['name'] ?? '', 'phone' => $phone, 'email' => $row['email'] ?? null, 'tags' => isset($row['tags']) ? array_filter(array_map('trim', explode('|', $row['tags']))) : null, 'last_activity_at' => $this->date($row['last_activity_at'] ?? null), 'next_return_at' => $this->date($row['next_return_at'] ?? null), 'opted_out_at' => filter_var($row['opted_out'] ?? false, FILTER_VALIDATE_BOOLEAN) ? now() : null];
+            $payload = ['name' => $name, 'phone' => $phone, 'last_activity_at' => $this->date($row['last_activity_at'] ?? null), 'next_return_at' => $this->date($row['next_return_at'] ?? null), 'opted_out_at' => filter_var($row['opted_out'] ?? false, FILTER_VALIDATE_BOOLEAN) ? now() : null];
             if ($customer) {
                 $customer->update($payload);
-
-                return 'updated';
-            }
-            $this->quota->consumeContact($company);
-            Customer::withoutGlobalScopes()->create(['company_id' => $company->id, ...$payload]);
-
-            return 'created';
-        }, $mapping);
-    }
-
-    /** @return array{created:int,updated:int,errors:array<int,string>} */
-    public function appointments(Company $company, string $path, array $mapping = []): array
-    {
-        return $this->rows($path, function (array $row) use ($company) {
-            $phone = $this->phones->normalize($row['phone'] ?? '');
-            $customer = Customer::withoutGlobalScopes()->where('company_id', $company->id)->where('phone', $phone)->first();
-            if (! $customer) {
+                $result = 'updated';
+            } else {
                 $this->quota->consumeContact($company);
-                $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'phone' => $phone, 'name' => $row['customer_name'] ?? $phone]);
+                $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, ...$payload]);
+                $result = 'created';
             }
-            $service = ! empty($row['service']) ? Service::withoutGlobalScopes()->firstOrCreate(['company_id' => $company->id, 'name' => trim($row['service'])]) : null;
-            $scheduled = $this->date($row['scheduled_at'] ?? null) ?? throw new \InvalidArgumentException('scheduled_at é obrigatório.');
-            $query = Appointment::withoutGlobalScopes()->where('company_id', $company->id);
-            $existing = ! empty($row['external_id']) ? $query->where('external_id', $row['external_id'])->first() : $query->where('customer_id', $customer->id)->where('service_id', $service?->id)->where('scheduled_at', $scheduled)->first();
-            $payload = ['customer_id' => $customer->id, 'service_id' => $service?->id, 'external_id' => $row['external_id'] ?? null, 'scheduled_at' => $scheduled, 'status' => $row['status'] ?? 'scheduled', 'potential_value' => $row['potential_value'] ?? null, 'realized_value' => $row['realized_value'] ?? null, 'next_return_at' => $this->date($row['next_return_at'] ?? null)];
-            if ($existing) {
-                $existing->update($payload);
 
-                return 'updated';
+            $petName = trim((string) ($row['pet_name'] ?? ''));
+            if ($petName !== '') {
+                Pet::withoutGlobalScopes()->firstOrCreate(['company_id' => $company->id, 'customer_id' => $customer->id, 'name' => $petName]);
             }
-            Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, ...$payload]);
 
-            return 'created';
+            return $result;
         }, $mapping);
     }
 
@@ -61,7 +44,7 @@ class CsvImportService
     {
         $file = new \SplFileObject($path);
         $file->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY);
-        $headers = array_map(fn ($value) => trim((string) $value), $file->fgetcsv());
+        $headers = array_map(fn (mixed $header): string => $this->normalizeHeader((string) $header), $file->fgetcsv());
         $result = ['created' => 0, 'updated' => 0, 'errors' => []];
         $line = 1;
         while (! $file->eof()) {
@@ -89,5 +72,12 @@ class CsvImportService
     private function date(?string $value): ?Carbon
     {
         return blank($value) ? null : Carbon::parse($value);
+    }
+
+    private function normalizeHeader(string $header): string
+    {
+        $header = trim($header);
+
+        return preg_replace('/^\x{FEFF}/u', '', $header) ?? $header;
     }
 }

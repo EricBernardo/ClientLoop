@@ -20,13 +20,24 @@ class ProcessCsvImport implements ShouldQueue
         $run->update(['status' => 'processing']);
 
         try {
-            $result = $run->type === 'customers'
-                ? $imports->customers($run->company, Storage::disk('local')->path($run->path), $run->mapping ?? [])
-                : $imports->appointments($run->company, Storage::disk('local')->path($run->path), $run->mapping ?? []);
+            if (Storage::disk('local')->missing($run->path)) {
+                throw new \RuntimeException('O arquivo enviado não está disponível para processamento. Envie o CSV novamente.');
+            }
+
+            $result = $imports->customers($run->company, Storage::disk('local')->path($run->path), $run->mapping ?? []);
             $run->update(['status' => 'completed', 'created_count' => $result['created'], 'updated_count' => $result['updated'], 'errors' => $result['errors']]);
         } catch (\Throwable $exception) {
             report($exception);
-            $run->update(['status' => 'failed', 'errors' => ['arquivo' => $exception->getMessage()]]);
+            $run->update(['status' => 'failed', 'errors' => ['arquivo' => $this->failureMessage($exception)]]);
         }
+    }
+
+    private function failureMessage(\Throwable $exception): string
+    {
+        if (str_contains($exception->getMessage(), 'não está disponível para processamento')) {
+            return $exception->getMessage();
+        }
+
+        return 'Não foi possível processar o arquivo. Tente enviar o CSV novamente. Se o problema continuar, confira se as colunas e os dados seguem o modelo disponibilizado.';
     }
 }

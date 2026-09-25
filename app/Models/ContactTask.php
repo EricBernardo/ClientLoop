@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ContactTask extends TenantModel
 {
-    protected $fillable = ['company_id', 'customer_id', 'appointment_id', 'opportunity_id', 'campaign_id', 'message_template_id', 'type', 'cycle_key', 'status', 'priority', 'due_at', 'rendered_message', 'outcome', 'outcome_note', 'completed_at'];
+    protected $fillable = ['company_id', 'customer_id', 'appointment_id', 'campaign_id', 'message_template_id', 'type', 'cycle_key', 'status', 'priority', 'due_at', 'rendered_message', 'outcome', 'outcome_note', 'completed_at'];
 
     protected function casts(): array
     {
@@ -22,11 +22,6 @@ class ContactTask extends TenantModel
     public function appointment(): BelongsTo
     {
         return $this->belongsTo(Appointment::class);
-    }
-
-    public function opportunity(): BelongsTo
-    {
-        return $this->belongsTo(Opportunity::class);
     }
 
     public function attempts(): HasMany

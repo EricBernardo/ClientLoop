@@ -2,17 +2,22 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\ContactTasks\ContactTaskResource;
+use App\Jobs\ProcessCsvImport;
 use App\Models\Appointment;
 use App\Models\Company;
 use App\Models\CompanySubscription;
 use App\Models\ContactTask;
 use App\Models\Customer;
+use App\Models\ImportRun;
 use App\Models\MessageTemplate;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\ContactTaskService;
+use App\Services\CsvImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use Tests\TestCase;
 
@@ -69,19 +74,118 @@ class OperationalRulesTest extends TestCase
 
     public function test_company_panel_exposes_operational_pages_in_portuguese(): void
     {
-        [, $user] = $this->company();
+        [$company, $user] = $this->company();
         $this->actingAs($user);
+        $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Cliente da tela', 'phone' => '5511980000020']);
+        Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'scheduled_at' => now()->addDay(), 'status' => 'scheduled']);
 
-        $this->get('/app/campaigns')->assertOk()->assertSee('Campanhas');
-        $this->get('/app/imports')->assertOk()->assertSee('Importar dados');
-        $this->get('/app/operations-board')->assertOk()->assertSee('Agenda e funil');
+        $this->get('/admin/campaigns')->assertOk()->assertSee('Campanhas');
+        $this->get('/admin/imports')
+            ->assertOk()
+            ->assertSee('Importar responsáveis e pets')
+            ->assertDontSee('Agendamentos e histórico');
+        $this->get('/admin/how-to-use')->assertOk()->assertSee('Organize seu pet shop, um banho de cada vez.')->assertSee('Cadastre os serviços')->assertSee('Cadastre os pets');
+        $this->get('/admin/appointments')->assertOk()->assertSee('Data e horário')->assertSee('Situação')->assertDontSee('Valor potencial')->assertSee('Agendado');
+    }
+
+    public function test_contact_queue_is_sorted_by_due_date_when_opened(): void
+    {
+        [$company, $user] = $this->company();
+        $this->actingAs($user);
+        $first = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Cliente com vencimento antigo', 'phone' => '5511980000041']);
+        $last = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Cliente com vencimento futuro', 'phone' => '5511980000042']);
+        ContactTask::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $last->id, 'type' => 'recall', 'priority' => 'normal', 'due_at' => now()->addDay(), 'rendered_message' => 'Mensagem futura']);
+        ContactTask::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $first->id, 'type' => 'recall', 'priority' => 'normal', 'due_at' => now()->subDay(), 'rendered_message' => 'Mensagem antiga']);
+
+        $this->get('/admin/contact-tasks')
+            ->assertOk()
+            ->assertSeeInOrder(['Cliente com vencimento antigo', 'Cliente com vencimento futuro']);
+
+        $this->assertFalse(ContactTaskResource::shouldRegisterNavigation());
+    }
+
+    public function test_import_history_shows_the_reason_for_each_rejected_line(): void
+    {
+        [$company, $user] = $this->company();
+        $this->actingAs($user);
+        ImportRun::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'user_id' => $user->id,
+            'type' => 'customers',
+            'status' => 'completed',
+            'path' => 'imports/example.csv',
+            'errors' => [2 => 'Informe um telefone brasileiro válido.'],
+        ]);
+
+        $this->get('/admin/imports')->assertOk()->assertSee('Ver erros')->assertSee('Linha 2:')->assertSee('Informe um telefone brasileiro válido.');
+    }
+
+    public function test_missing_import_file_is_explained_without_exposing_a_technical_exception(): void
+    {
+        Storage::fake('local');
+        [$company, $user] = $this->company();
+        $run = ImportRun::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'user_id' => $user->id,
+            'type' => 'customers',
+            'path' => 'imports/arquivo-ausente.csv',
+        ]);
+
+        ProcessCsvImport::dispatchSync($run->id);
+
+        $this->assertSame('failed', $run->fresh()->status);
+        $this->assertSame([
+            'arquivo' => 'O arquivo enviado não está disponível para processamento. Envie o CSV novamente.',
+        ], $run->fresh()->errors);
+    }
+
+    public function test_previous_missing_file_errors_are_shown_with_a_clear_message(): void
+    {
+        [$company, $user] = $this->company();
+        $this->actingAs($user);
+        ImportRun::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'user_id' => $user->id,
+            'type' => 'customers',
+            'status' => 'failed',
+            'path' => 'imports/arquivo-ausente.csv',
+            'errors' => ['arquivo' => 'SplFileObject::__construct(/var/www/html/storage/app/private/imports/exemplo.csv): Failed to open stream: No such file or directory'],
+        ]);
+
+        $this->get('/admin/imports')
+            ->assertOk()
+            ->assertSee('O arquivo enviado não estava disponível para o processamento. Envie o CSV novamente.')
+            ->assertDontSee('SplFileObject::__construct');
+    }
+
+    public function test_customer_import_accepts_the_utf8_bom_used_by_the_downloaded_template(): void
+    {
+        Storage::fake('local');
+        [$company] = $this->company();
+        Storage::disk('local')->put('imports/clientes.csv', "\xEF\xBB\xBFcustomer_name,phone\nAna Silva,(11) 99999-9999\n");
+
+        $result = app(CsvImportService::class)->customers(
+            $company,
+            Storage::disk('local')->path('imports/clientes.csv'),
+            ['name' => 'customer_name', 'phone' => 'phone'],
+        );
+
+        $this->assertSame(['created' => 1, 'updated' => 0, 'errors' => []], $result);
+        $this->assertDatabaseHas('customers', ['company_id' => $company->id, 'name' => 'Ana Silva']);
+    }
+
+    public function test_public_site_explains_product_and_exposes_registration(): void
+    {
+        $this->get('/')->assertOk()->assertSee('Sua agenda, seus pets e seus pacotes no mesmo lugar.')->assertSee(route('register'))->assertSee('/images/clientloop-symbol.png');
+        $this->get('/register')->assertOk()->assertSee('Crie sua conta');
+        $this->get('/cadastro')->assertRedirect('/register');
     }
 
     /** @return array{Company, User} */
     private function company(): array
     {
         $plan = Plan::create(['name' => 'Teste', 'contact_limit' => 100, 'task_limit' => 100, 'is_default' => true]);
-        $company = Company::create(['name' => 'Empresa teste '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active', 'follow_up_days' => [1, 3, 7]]);
+        $company = Company::create(['name' => 'Empresa teste '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active']);
         CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'active']);
         $user = User::create(['company_id' => $company->id, 'name' => 'Usuária', 'email' => fake()->unique()->safeEmail(), 'password' => 'password-password']);
         $user->forceFill(['email_verified_at' => now()])->save();

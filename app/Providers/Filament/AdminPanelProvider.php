@@ -16,6 +16,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -25,11 +26,16 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('company')
-            ->path('app')
+            ->path('admin')
             ->login()
             ->profile(isSimple: false)
+            ->brandName('ClientLoop')
+            ->brandLogo(new HtmlString('<span style="display:flex;align-items:center;gap:.5rem;font-size:1.2rem;font-weight:800;letter-spacing:-.04em;color:#172033"><img src="/images/clientloop-symbol.png" alt="" style="width:2rem;height:2rem"><span>Client<span style="color:#0f766e">Loop</span></span></span>'))
+            ->darkModeBrandLogo(new HtmlString('<span style="display:flex;align-items:center;gap:.5rem;font-size:1.2rem;font-weight:800;letter-spacing:-.04em;color:#f8fafc"><img src="/images/clientloop-symbol.png" alt="" style="width:2rem;height:2rem"><span>Client<span style="color:#7dd3c7">Loop</span></span></span>'))
+            ->brandLogoHeight('2rem')
+            ->favicon('/images/clientloop-symbol.png')
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Teal,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

@@ -28,7 +28,7 @@ class PlanResource extends Resource
     {
         return $schema->components([
             TextInput::make('name')->label('Nome')->required(),
-            TextInput::make('contact_limit')->label('Limite de clientes')->numeric()->required()->minValue(1),
+            TextInput::make('contact_limit')->label('Limite de responsáveis')->numeric()->required()->minValue(1),
             TextInput::make('task_limit')->label('Limite mensal de tarefas')->numeric()->required()->minValue(1),
             Toggle::make('is_default')->label('Plano inicial'),
         ]);
@@ -36,7 +36,7 @@ class PlanResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->columns([TextColumn::make('name')->label('Nome')->searchable(), TextColumn::make('contact_limit')->label('Clientes'), TextColumn::make('task_limit')->label('Tarefas/mês'), IconColumn::make('is_default')->label('Inicial')->boolean()])->recordActions([EditAction::make()->url(fn (Plan $record) => self::getUrl('edit', ['record' => $record])), DeleteAction::make()])->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
+        return $table->columns([TextColumn::make('name')->label('Nome')->searchable(), TextColumn::make('contact_limit')->label('Responsáveis'), TextColumn::make('task_limit')->label('Tarefas/mês'), IconColumn::make('is_default')->label('Inicial')->boolean()])->recordActions([EditAction::make()->url(fn (Plan $record) => self::getUrl('edit', ['record' => $record])), DeleteAction::make()])->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
 
     public static function getPages(): array

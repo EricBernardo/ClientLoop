@@ -24,7 +24,6 @@ return new class extends Migration
             $t->string('status')->default('trial');
             $t->unsignedTinyInteger('confirmation_hours')->default(24);
             $t->unsignedSmallInteger('reactivation_months')->default(6);
-            $t->json('follow_up_days')->nullable();
             $t->timestamps();
         });
         Schema::table('users', fn (Blueprint $t) => $t->foreign('company_id')->references('id')->on('companies')->nullOnDelete());
@@ -43,8 +42,6 @@ return new class extends Migration
             $t->foreignId('company_id')->constrained()->cascadeOnDelete();
             $t->string('name');
             $t->string('phone', 20);
-            $t->string('email')->nullable();
-            $t->json('tags')->nullable();
             $t->text('notes')->nullable();
             $t->timestamp('last_activity_at')->nullable();
             $t->timestamp('next_return_at')->nullable();
@@ -68,33 +65,10 @@ return new class extends Migration
             $t->foreignId('company_id')->constrained()->cascadeOnDelete();
             $t->foreignId('customer_id')->constrained()->cascadeOnDelete();
             $t->foreignId('service_id')->nullable()->constrained()->nullOnDelete();
-            $t->string('external_id')->nullable();
             $t->timestamp('scheduled_at');
             $t->string('status')->default('scheduled');
-            $t->decimal('potential_value', 12, 2)->nullable();
-            $t->decimal('realized_value', 12, 2)->nullable();
-            $t->string('origin')->nullable();
-            $t->timestamp('next_return_at')->nullable();
             $t->timestamps();
-            $t->unique(['company_id', 'external_id']);
             $t->index(['company_id', 'scheduled_at', 'status']);
-        });
-        Schema::create('opportunities', function (Blueprint $t) {
-            $t->id();
-            $t->foreignId('company_id')->constrained()->cascadeOnDelete();
-            $t->foreignId('customer_id')->constrained()->cascadeOnDelete();
-            $t->foreignId('service_id')->nullable()->constrained()->nullOnDelete();
-            $t->foreignId('appointment_id')->nullable()->constrained()->nullOnDelete();
-            $t->string('title');
-            $t->string('stage')->default('new');
-            $t->string('urgency')->default('normal');
-            $t->decimal('potential_value', 12, 2)->nullable();
-            $t->decimal('realized_value', 12, 2)->nullable();
-            $t->timestamp('next_follow_up_at')->nullable();
-            $t->string('loss_reason')->nullable();
-            $t->text('notes')->nullable();
-            $t->timestamps();
-            $t->index(['company_id', 'stage', 'next_follow_up_at']);
         });
         Schema::create('message_templates', function (Blueprint $t) {
             $t->id();
@@ -132,7 +106,6 @@ return new class extends Migration
             $t->foreignId('company_id')->constrained()->cascadeOnDelete();
             $t->foreignId('customer_id')->constrained()->cascadeOnDelete();
             $t->foreignId('appointment_id')->nullable()->constrained()->nullOnDelete();
-            $t->foreignId('opportunity_id')->nullable()->constrained()->nullOnDelete();
             $t->foreignId('campaign_id')->nullable()->constrained()->nullOnDelete();
             $t->foreignId('message_template_id')->nullable()->constrained()->nullOnDelete();
             $t->string('type');
@@ -178,7 +151,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        foreach (['activity_logs', 'usage_records', 'contact_attempts', 'contact_tasks', 'campaign_recipients', 'campaigns', 'message_templates', 'opportunities', 'appointments', 'services', 'customers', 'company_subscriptions'] as $t) {
+        foreach (['activity_logs', 'usage_records', 'contact_attempts', 'contact_tasks', 'campaign_recipients', 'campaigns', 'message_templates', 'appointments', 'services', 'customers', 'company_subscriptions'] as $t) {
             Schema::dropIfExists($t);
         } Schema::table('users', fn (Blueprint $t) => $t->dropConstrainedForeignId('company_id'));
         Schema::dropIfExists('companies');

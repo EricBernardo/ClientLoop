@@ -16,7 +16,7 @@ class QuotaService
     public function consumeContact(Company $company): void
     {
         if (! $this->canCreateContact($company)) {
-            throw ValidationException::withMessages(['quota' => 'Limite mensal de clientes atingido.']);
+            throw ValidationException::withMessages(['quota' => 'Limite mensal de responsáveis atingido.']);
         } $this->record($company)->increment('contacts_count');
     }
 
