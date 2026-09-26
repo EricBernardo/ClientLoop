@@ -92,16 +92,39 @@ class Imports extends Page
     private function autoMapHeader(string $field): string
     {
         $aliases = [
-            'responsible_name' => ['responsible_name', 'customer_name', 'name'],
-            'responsible_phone' => ['responsible_phone', 'phone'],
+            'responsible_name' => [
+                'responsible_name', 'customer_name', 'name',
+                'nome', 'nome do responsavel', 'nome do responsável', 'responsavel', 'responsável',
+            ],
+            'responsible_phone' => [
+                'responsible_phone', 'phone',
+                'telefone', 'celular', 'whatsapp', 'fone',
+            ],
+            'pet_name' => ['pet_name', 'pet', 'nome do pet', 'animal'],
+            'last_activity_at' => ['last_activity_at', 'ultimo atendimento', 'último atendimento', 'last_visit'],
+            'next_return_at' => ['next_return_at', 'retorno', 'retorno previsto', 'next_return'],
+            'opted_out' => ['opted_out', 'nao receber contato', 'não receber contato', 'opt_out'],
         ];
 
-        foreach ($aliases[$field] ?? [$field] as $header) {
-            if (in_array($header, $this->headers, true)) {
-                return $header;
+        $normalizedHeaders = collect($this->headers)
+            ->mapWithKeys(fn (string $header): array => [$this->normalizeAlias($header) => $header])
+            ->all();
+
+        foreach ($aliases[$field] ?? [$field] as $alias) {
+            $key = $this->normalizeAlias($alias);
+            if (isset($normalizedHeaders[$key])) {
+                return $normalizedHeaders[$key];
             }
         }
 
         return '';
+    }
+
+    private function normalizeAlias(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = strtr($value, ['á' => 'a', 'à' => 'a', 'ã' => 'a', 'â' => 'a', 'é' => 'e', 'ê' => 'e', 'í' => 'i', 'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ú' => 'u', 'ç' => 'c']);
+
+        return preg_replace('/\s+/', ' ', $value) ?? $value;
     }
 }

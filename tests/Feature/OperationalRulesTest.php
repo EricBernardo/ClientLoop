@@ -15,10 +15,12 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\ContactTaskService;
 use App\Services\CsvImportService;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class OperationalRulesTest extends TestCase
@@ -101,7 +103,7 @@ class OperationalRulesTest extends TestCase
             ->assertOk()
             ->assertSeeInOrder(['Cliente com vencimento antigo', 'Cliente com vencimento futuro']);
 
-        $this->assertFalse(ContactTaskResource::shouldRegisterNavigation());
+        $this->assertTrue(ContactTaskResource::shouldRegisterNavigation());
     }
 
     public function test_import_history_shows_the_reason_for_each_rejected_line(): void
@@ -179,6 +181,34 @@ class OperationalRulesTest extends TestCase
         $this->get('/')->assertOk()->assertSee('Sua agenda, seus pets e seus pacotes no mesmo lugar.')->assertSee(route('register'))->assertSee('/images/clientloop-symbol.png');
         $this->get('/register')->assertOk()->assertSee('Crie sua conta');
         $this->get('/cadastro')->assertRedirect('/register');
+    }
+
+    public function test_email_verification_notice_is_branded_and_password_reset_is_available(): void
+    {
+        [$company, $user] = $this->company();
+        $user->forceFill(['email_verified_at' => null])->save();
+
+        $this->actingAs($user)
+            ->get('/verify-email')
+            ->assertOk()
+            ->assertSee('Confirme seu e-mail')
+            ->assertSee('Client')
+            ->assertSee('Reenviar link')
+            ->assertSee('Já confirmei — ir ao painel');
+
+        auth()->logout();
+
+        $this->get('/admin/password-reset/request')->assertOk();
+    }
+
+    public function test_calendar_defaults_to_day_mode(): void
+    {
+        [, $user] = $this->company();
+        $this->actingAs($user);
+        Filament::setCurrentPanel(Filament::getPanel('company'));
+
+        Livewire::test(\App\Filament\Pages\Calendar::class)
+            ->assertSet('mode', 'day');
     }
 
     /** @return array{Company, User} */

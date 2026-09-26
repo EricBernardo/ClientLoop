@@ -17,6 +17,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -26,6 +27,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 
 class CampaignResource extends Resource
 {
@@ -75,7 +77,14 @@ class CampaignResource extends Resource
             TextColumn::make('starts_at')->label('Início')->dateTime('d/m/Y H:i'),
             TextColumn::make('recipients_count')->label('Destinatários')->counts('recipients'),
         ])->recordActions([
-            Action::make('launch')->label('Ativar campanha')->color('success')->icon(Heroicon::OutlinedPlay)->visible(fn (Campaign $record) => $record->status === 'draft')->requiresConfirmation()->action(fn (Campaign $record) => app(CampaignService::class)->launch($record)),
+            Action::make('launch')->label('Ativar campanha')->color('success')->icon(Heroicon::OutlinedPlay)->visible(fn (Campaign $record) => $record->status === 'draft')->requiresConfirmation()->action(function (Campaign $record): void {
+                try {
+                    $created = app(CampaignService::class)->launch($record);
+                    Notification::make()->success()->title('Campanha ativada')->body($created === 1 ? '1 tarefa criada na fila de contatos.' : "{$created} tarefas criadas na fila de contatos.")->send();
+                } catch (ValidationException $exception) {
+                    Notification::make()->danger()->title('Não foi possível ativar a campanha')->body((string) collect($exception->errors())->flatten()->first())->send();
+                }
+            }),
             EditAction::make()->color('info')->url(fn (Campaign $record) => self::getUrl('edit', ['record' => $record]))->visible(fn (Campaign $record) => $record->status === 'draft'),
             DeleteAction::make()->visible(fn (Campaign $record) => $record->status === 'draft'),
         ])->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);

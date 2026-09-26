@@ -29,7 +29,8 @@ class Calendar extends Page
     public function mount(): void
     {
         $this->date = Carbon::parse(request('date', today()->toDateString()))->toDateString();
-        $this->mode = in_array(request('mode', 'week'), ['day', 'week'], true) ? request('mode', 'week') : 'week';
+        // Default day view — week forces heavy horizontal scroll on phones (see calendar.blade.php min-widths).
+        $this->mode = in_array(request('mode', 'day'), ['day', 'week'], true) ? request('mode', 'day') : 'day';
     }
 
     /** @return Collection<int, Appointment> */

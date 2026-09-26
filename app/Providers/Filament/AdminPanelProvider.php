@@ -28,6 +28,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('company')
             ->path('admin')
             ->login()
+            ->passwordReset()
             ->profile(isSimple: false)
             ->brandName('ClientLoop')
             ->brandLogo(new HtmlString('<span style="display:flex;align-items:center;gap:.5rem;font-size:1.2rem;font-weight:800;letter-spacing:-.04em;color:#172033"><img src="/images/clientloop-symbol.png" alt="" style="width:2rem;height:2rem"><span>Client<span style="color:#0f766e">Loop</span></span></span>'))
