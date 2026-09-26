@@ -7,6 +7,7 @@ use App\Filament\Resources\PackageOffers\PackageOfferResource;
 use App\Filament\Resources\PetPackages\Pages\CreatePetPackage;
 use App\Filament\Resources\PetPackages\Pages\EditPetPackage;
 use App\Filament\Resources\PetPackages\Pages\ListPetPackages;
+use App\Models\Pet;
 use App\Models\PetPackage;
 use App\Services\PackageService;
 use BackedEnum;
@@ -17,6 +18,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -24,6 +26,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
 class PetPackageResource extends Resource
@@ -85,6 +88,42 @@ class PetPackageResource extends Resource
         ])->filters([
             SelectFilter::make('payment_status')->label('Pagamento')->options(['paid' => 'Pago', 'pending' => 'Pendente'])->searchable(),
         ])->recordActions([
+            Action::make('transferir')
+                ->label('Transferir')
+                ->icon('heroicon-o-arrows-right-left')
+                ->color('info')
+                ->form([
+                    Select::make('pet_id')
+                        ->label('Pet de destino')
+                        ->options(function (PetPackage $record): array {
+                            $record->loadMissing('pet');
+                            $customerId = $record->pet?->customer_id;
+
+                            if (! $customerId) {
+                                return [];
+                            }
+
+                            return Pet::query()
+                                ->where('customer_id', $customerId)
+                                ->whereKeyNot($record->pet_id)
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->all();
+                        })
+                        ->searchable()
+                        ->preload()
+                        ->required()
+                        ->helperText('Só pets do mesmo responsável.'),
+                ])
+                ->action(function (PetPackage $record, array $data): void {
+                    try {
+                        $target = Pet::query()->findOrFail($data['pet_id']);
+                        app(PackageService::class)->transfer($record, $target);
+                        Notification::make()->success()->title('Pacote transferido')->send();
+                    } catch (ValidationException $exception) {
+                        Notification::make()->danger()->title('Não foi possível transferir')->body(collect($exception->errors())->flatten()->first())->send();
+                    }
+                }),
             EditAction::make()->color('info')->url(fn (PetPackage $record): string => self::getUrl('edit', ['record' => $record])),
             DeleteAction::make(),
         ])->toolbarActions([

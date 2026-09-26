@@ -30,7 +30,7 @@ class SetupChecklist
             [
                 'key' => 'hours',
                 'label' => 'Confirmar horários de atendimento',
-                'done' => true,
+                'done' => $company->hours_configured_at !== null,
                 'url' => BusinessSettings::getUrl(),
             ],
             [
@@ -60,7 +60,7 @@ class SetupChecklist
             [
                 'key' => 'guide',
                 'label' => 'Ver o guia completo',
-                'done' => false,
+                'done' => $company->guide_viewed_at !== null,
                 'url' => HowToUse::getUrl(),
             ],
         ];
@@ -70,7 +70,8 @@ class SetupChecklist
     {
         return Service::query()->where('company_id', $company->id)->exists()
             && Customer::query()->where('company_id', $company->id)->exists()
-            && Pet::query()->where('company_id', $company->id)->exists();
+            && Pet::query()->where('company_id', $company->id)->exists()
+            && $company->hours_configured_at !== null;
     }
 
     public static function shouldShow(Company $company): bool

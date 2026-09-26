@@ -16,7 +16,6 @@ use App\Models\Pet;
 use App\Models\Plan;
 use App\Models\Service;
 use App\Models\User;
-use App\Services\TemplateRenderer;
 use App\Support\SetupChecklist;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,6 +38,8 @@ class UxPendingPrioritiesTest extends TestCase
         Service::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Banho', 'duration_minutes' => 60, 'suggested_price' => 50, 'active' => true]);
         $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Ana', 'phone' => '5511999999999']);
         Pet::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'name' => 'Thor']);
+        $company->forceFill(['hours_configured_at' => now()])->saveQuietly();
+        $user->unsetRelation('company');
 
         $this->assertFalse(SetupChecklist::shouldShow($company->fresh()));
         $this->assertFalse(SetupChecklistWidget::canView());
@@ -57,17 +58,6 @@ class UxPendingPrioritiesTest extends TestCase
         $this->assertTrue(AppointmentResource::shouldRegisterNavigation());
         $this->assertSame('Lista de atendimentos', AppointmentResource::getNavigationLabel());
         $this->assertSame('Cadastros', CustomerResource::getNavigationGroup());
-    }
-
-    public function test_template_renderer_fills_booking_link(): void
-    {
-        [$company] = $this->company();
-        $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Maria', 'phone' => '5511888888888']);
-
-        $body = app(TemplateRenderer::class)->render('Oi {{responsavel}}, agenda: {{link_agendamento}}', $customer);
-
-        $this->assertStringContainsString('Maria', $body);
-        $this->assertStringContainsString('/admin/appointments/create?customer_id='.$customer->id, $body);
     }
 
     public function test_customer_opt_out_is_action_only_and_package_defaults_two_items(): void

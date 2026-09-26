@@ -10,9 +10,14 @@ class HourlyDateTimePicker extends DateTimePicker
     {
         parent::setUp();
 
+        $slotMinutes = (int) (auth()->user()?->company?->appointment_slot_minutes ?? 60);
+        if (! in_array($slotMinutes, [15, 30, 60], true)) {
+            $slotMinutes = 60;
+        }
+
         $this
             ->hoursStep(1)
-            ->minutesStep(60)
+            ->minutesStep($slotMinutes)
             ->seconds(false)
             ->weekStartsOnMonday();
     }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Feature\FieldAuditPrioritiesTest" file="C:\laragon\www\ClientLoop\tests\Feature\FieldAuditPrioritiesTest.php" tests="5" assertions="14" errors="0" failures="0" skipped="0" time="0.437547">
+    <testcase name="test_legacy_package_and_subscription_columns_are_gone" file="C:\laragon\www\ClientLoop\tests\Feature\FieldAuditPrioritiesTest.php" line="28" class="Tests\Feature\FieldAuditPrioritiesTest" classname="Tests.Feature.FieldAuditPrioritiesTest" assertions="3" time="0.265395"/>
+    <testcase name="test_campaign_recipients_contact_task_foreign_key_exists" file="C:\laragon\www\ClientLoop\tests\Feature\FieldAuditPrioritiesTest.php" line="35" class="Tests\Feature\FieldAuditPrioritiesTest" classname="Tests.Feature.FieldAuditPrioritiesTest" assertions="1" time="0.020689"/>
+    <testcase name="test_package_offer_and_pet_package_work_without_legacy_service_id" file="C:\laragon\www\ClientLoop\tests\Feature\FieldAuditPrioritiesTest.php" line="41" class="Tests\Feature\FieldAuditPrioritiesTest" classname="Tests.Feature.FieldAuditPrioritiesTest" assertions="3" time="0.075750"/>
+    <testcase name="test_company_overview_includes_plan_usage_stat" file="C:\laragon\www\ClientLoop\tests\Feature\FieldAuditPrioritiesTest.php" line="65" class="Tests\Feature\FieldAuditPrioritiesTest" classname="Tests.Feature.FieldAuditPrioritiesTest" assertions="1" time="0.047050"/>
+    <testcase name="test_active_campaign_can_be_completed" file="C:\laragon\www\ClientLoop\tests\Feature\FieldAuditPrioritiesTest.php" line="83" class="Tests\Feature\FieldAuditPrioritiesTest" classname="Tests.Feature.FieldAuditPrioritiesTest" assertions="6" time="0.028663"/>
+  </testsuite>
+</testsuites>

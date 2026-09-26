@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Feature\ContactTaskFlowTest" file="C:\laragon\www\ClientLoop\tests\Feature\ContactTaskFlowTest.php" tests="7" assertions="20" errors="0" failures="0" skipped="0" time="0.742984">
+    <testcase name="test_task_uses_whatsapp_link_and_opt_out_cancels_pending_work" file="C:\laragon\www\ClientLoop\tests\Feature\ContactTaskFlowTest.php" line="26" class="Tests\Feature\ContactTaskFlowTest" classname="Tests.Feature.ContactTaskFlowTest" assertions="5" time="0.413266"/>
+    <testcase name="test_global_scope_hides_other_company_customers" file="C:\laragon\www\ClientLoop\tests\Feature\ContactTaskFlowTest.php" line="46" class="Tests\Feature\ContactTaskFlowTest" classname="Tests.Feature.ContactTaskFlowTest" assertions="1" time="0.040969"/>
+    <testcase name="test_campaign_excludes_opted_out_customers_and_creates_manual_tasks" file="C:\laragon\www\ClientLoop\tests\Feature\ContactTaskFlowTest.php" line="57" class="Tests\Feature\ContactTaskFlowTest" classname="Tests.Feature.ContactTaskFlowTest" assertions="2" time="0.047091"/>
+    <testcase name="test_first_no_response_on_confirmation_keeps_task_pending" file="C:\laragon\www\ClientLoop\tests\Feature\ContactTaskFlowTest.php" line="71" class="Tests\Feature\ContactTaskFlowTest" classname="Tests.Feature.ContactTaskFlowTest" assertions="5" time="0.066936"/>
+    <testcase name="test_second_no_response_on_confirmation_completes_task" file="C:\laragon\www\ClientLoop\tests\Feature\ContactTaskFlowTest.php" line="90" class="Tests\Feature\ContactTaskFlowTest" classname="Tests.Feature.ContactTaskFlowTest" assertions="3" time="0.063650"/>
+    <testcase name="test_confirmed_after_first_no_response_marks_appointment_confirmed" file="C:\laragon\www\ClientLoop\tests\Feature\ContactTaskFlowTest.php" line="107" class="Tests\Feature\ContactTaskFlowTest" classname="Tests.Feature.ContactTaskFlowTest" assertions="2" time="0.058802"/>
+    <testcase name="test_scheduled_outcome_completes_task_without_changing_linked_appointment" file="C:\laragon\www\ClientLoop\tests\Feature\ContactTaskFlowTest.php" line="123" class="Tests\Feature\ContactTaskFlowTest" classname="Tests.Feature.ContactTaskFlowTest" assertions="2" time="0.052270"/>
+  </testsuite>
+</testsuites>

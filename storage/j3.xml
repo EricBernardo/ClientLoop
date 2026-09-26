@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Feature\HourlyDateTimePickerTest" file="C:\laragon\www\ClientLoop\tests\Feature\HourlyDateTimePickerTest.php" tests="2" assertions="4" errors="0" failures="0" skipped="0" time="0.277629">
+    <testcase name="test_it_offers_only_full_hour_time_slots_by_default" file="C:\laragon\www\ClientLoop\tests\Feature\HourlyDateTimePickerTest.php" line="17" class="Tests\Feature\HourlyDateTimePickerTest" classname="Tests.Feature.HourlyDateTimePickerTest" assertions="3" time="0.243048"/>
+    <testcase name="test_it_uses_company_appointment_slot_minutes" file="C:\laragon\www\ClientLoop\tests\Feature\HourlyDateTimePickerTest.php" line="26" class="Tests\Feature\HourlyDateTimePickerTest" classname="Tests.Feature.HourlyDateTimePickerTest" assertions="1" time="0.034582"/>
+  </testsuite>
+</testsuites>

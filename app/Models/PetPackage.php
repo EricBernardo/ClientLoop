@@ -76,23 +76,28 @@ class PetPackage extends TenantModel
 
         static::created(function (self $package): void {
             if (! $package->package_offer_id || $package->items()->exists()) {
-                return;
+                // still clear return when selling a paid package without copying items again
+            } else {
+                $offerItems = PackageOfferItem::withoutGlobalScopes()
+                    ->where('package_offer_id', $package->package_offer_id)
+                    ->with('service')
+                    ->orderBy('position')
+                    ->get();
+
+                foreach ($offerItems as $item) {
+                    $package->items()->create([
+                        'company_id' => $package->company_id,
+                        'service_id' => $item->service_id,
+                        'service_name' => $item->service->name,
+                        'duration_minutes' => $item->service->duration_minutes,
+                        'position' => $item->position,
+                    ]);
+                }
             }
 
-            $offerItems = PackageOfferItem::withoutGlobalScopes()
-                ->where('package_offer_id', $package->package_offer_id)
-                ->with('service')
-                ->orderBy('position')
-                ->get();
-
-            foreach ($offerItems as $item) {
-                $package->items()->create([
-                    'company_id' => $package->company_id,
-                    'service_id' => $item->service_id,
-                    'service_name' => $item->service->name,
-                    'duration_minutes' => $item->service->duration_minutes,
-                    'position' => $item->position,
-                ]);
+            if ($package->payment_status === 'paid') {
+                $package->loadMissing('pet.customer');
+                $package->pet?->customer?->update(['next_return_at' => null]);
             }
         });
     }

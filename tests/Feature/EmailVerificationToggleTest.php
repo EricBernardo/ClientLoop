@@ -32,7 +32,16 @@ class EmailVerificationToggleTest extends TestCase
 
         $user = User::where('email', $email)->firstOrFail();
         $this->assertNull($user->email_verified_at);
-        Notification::assertSentTo($user, VerifyEmail::class);
+        Notification::assertSentTo($user, VerifyEmail::class, function (VerifyEmail $notification) use ($user): bool {
+            $mail = $notification->toMail($user);
+
+            $this->assertSame('Confirme seu e-mail', $mail->subject);
+            $this->assertContains('Clique no botão abaixo para confirmar seu endereço de e-mail.', $mail->introLines);
+            $this->assertSame('Confirmar e-mail', $mail->actionText);
+            $this->assertContains('Se você não criou uma conta, nenhuma ação adicional é necessária.', $mail->outroLines);
+
+            return true;
+        });
         $this->assertFalse($user->canAccessPanel(Filament::getPanel('company')));
     }
 

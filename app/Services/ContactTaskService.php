@@ -30,8 +30,29 @@ class ContactTaskService
         return DB::transaction(function () use ($company, $customer, $type, $dueAt, $links, $template) {
             $this->quota->consumeTasks($company);
             $appointment = $links['appointment'] ?? null;
+            $pet = $links['pet'] ?? $appointment?->pet;
 
-            return ContactTask::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'appointment_id' => $appointment?->id, 'campaign_id' => ($links['campaign'] ?? null)?->id, 'message_template_id' => $template?->id, 'type' => $type, 'cycle_key' => $links['cycle_key'] ?? null, 'priority' => $type === 'confirmation' ? 'high' : 'normal', 'due_at' => $dueAt, 'rendered_message' => $template ? $this->renderer->render($template->body, $customer, $links['service'] ?? null, $appointment?->scheduled_at, $appointment?->pet) : null]);
+            return ContactTask::withoutGlobalScopes()->create([
+                'company_id' => $company->id,
+                'customer_id' => $customer->id,
+                'appointment_id' => $appointment?->id,
+                'campaign_id' => ($links['campaign'] ?? null)?->id,
+                'message_template_id' => $template?->id,
+                'type' => $type,
+                'cycle_key' => $links['cycle_key'] ?? null,
+                'priority' => $type === 'confirmation' ? 'high' : 'normal',
+                'due_at' => $dueAt,
+                'rendered_message' => $template
+                    ? $this->renderer->render(
+                        $template->body,
+                        $customer,
+                        $links['service'] ?? null,
+                        $appointment?->scheduled_at,
+                        $pet,
+                        $company,
+                    )
+                    : null,
+            ]);
         });
     }
 
@@ -44,7 +65,19 @@ class ContactTaskService
             throw ValidationException::withMessages(['outcome' => 'Resultado inválido.']);
         }
         DB::transaction(function () use ($task, $outcome, $note) {
+            $isConfirmationRetry = $outcome === 'no_response'
+                && $task->type === 'confirmation'
+                && $task->attempts()->count() === 0;
+
             $task->attempts()->create(['user_id' => auth()->id(), 'outcome' => $outcome, 'note' => $note, 'attempted_at' => now()]);
+
+            if ($isConfirmationRetry) {
+                $task->update(['due_at' => now()]);
+                $this->log($task->company_id, 'contact_task.no_response_retry', $task, ['outcome' => $outcome, 'note' => $note, 'attempt' => 1]);
+
+                return;
+            }
+
             $task->update(['status' => 'completed', 'outcome' => $outcome, 'outcome_note' => $note, 'completed_at' => now()]);
             if ($outcome === 'opt_out') {
                 $this->optOut($task->customer, $note);

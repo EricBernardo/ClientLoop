@@ -25,17 +25,24 @@ class CompanyOverview extends StatsOverviewWidget
         $today = now()->startOfDay();
         $todayAppointments = Appointment::query()->whereDate('scheduled_at', $today)->whereNotIn('status', ['cancelled', 'no_show'])->count();
         $pendingTasks = ContactTask::query()->where('status', 'pending')->count();
+        $lateTasks = ContactTask::query()->where('status', 'pending')->where('due_at', '<', now())->count();
+        $staleOpenTasks = ContactTask::query()->where('status', 'pending')->where('updated_at', '<', now()->subHours(4))->count();
         $lowPackages = PetPackage::query()->get()->filter(fn (PetPackage $package): bool => $package->remaining_credits <= 1 && $package->payment_status === 'paid')->count();
         $expiredPackages = PetPackage::query()->whereDate('valid_until', '<', today())->count();
         $nextPackageSteps = PetPackage::query()->where('payment_status', 'paid')->get()->filter(fn (PetPackage $package): bool => app(PackageService::class)->nextItem($package) !== null)->count();
         $usage = app(QuotaService::class)->usage($company);
+        $quotaExhausted = $usage['remaining_tasks'] === 0;
 
         return [
             Stat::make('Agenda de hoje', $todayAppointments)->description('Ver os atendimentos de hoje')->url(Calendar::getUrl(['date' => today()->toDateString(), 'mode' => 'day']))->color($todayAppointments ? 'primary' : 'success'),
             Stat::make('Tarefas pendentes', $pendingTasks)->description('Abrir contatos que precisam de ação')->url(ContactTaskResource::getUrl('index', ['view' => 'pending']))->color($pendingTasks ? 'warning' : 'success'),
+            Stat::make('Tarefas atrasadas', $lateTasks)
+                ->description($staleOpenTasks ? "{$staleOpenTasks} sem resultado há mais de 4h" : 'Vencimento já passou')
+                ->url(ContactTaskResource::getUrl('index', ['view' => 'late']))
+                ->color($lateTasks || $staleOpenTasks ? 'danger' : 'success'),
             Stat::make('Uso do plano', $usage['contacts'].'/'.$usage['contact_limit'].' · '.$usage['tasks'].'/'.$usage['task_limit'])
-                ->description('Responsáveis e tarefas no mês')
-                ->color($usage['remaining_tasks'] === 0 || $usage['contacts'] >= $usage['contact_limit'] ? 'danger' : 'success'),
+                ->description($quotaExhausted ? 'Cota de tarefas esgotada — confirmações não serão geradas' : 'Responsáveis e tarefas no mês')
+                ->color($quotaExhausted || $usage['contacts'] >= $usage['contact_limit'] ? 'danger' : 'success'),
             Stat::make('Pacotes com pouco saldo', $lowPackages)->description('Ver pacotes com até um crédito')->url(PetPackageResource::getUrl('index', ['view' => 'low']))->color($lowPackages ? 'warning' : 'success'),
             Stat::make('Próximas etapas de pacote', $nextPackageSteps)->description('Ver pacotes que ainda têm atendimento')->url(PetPackageResource::getUrl('index'))->color($nextPackageSteps ? 'primary' : 'success'),
             Stat::make('Pacotes vencidos', $expiredPackages)->description('Ver pacotes fora da validade')->url(PetPackageResource::getUrl('index', ['view' => 'expired']))->color($expiredPackages ? 'danger' : 'success'),

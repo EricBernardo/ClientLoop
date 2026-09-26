@@ -19,14 +19,23 @@ class GenerateContactTasks extends Command
         Company::query()->whereIn('status', ['trial', 'active'])->each(function (Company $company) use ($tasks) {
             $now = now();
             Appointment::withoutGlobalScopes()->with(['customer', 'service', 'pet'])->where('company_id', $company->id)->whereIn('status', ['scheduled', 'reschedule_requested'])->whereBetween('scheduled_at', [$now, $now->copy()->addHours($company->confirmation_hours)])->each(function (Appointment $appointment) use ($tasks, $company): void {
-                $tasks->create($company, $appointment->customer, 'confirmation', $appointment->scheduled_at->copy()->subHours($company->confirmation_hours), ['appointment' => $appointment, 'service' => $appointment->service, 'cycle_key' => 'appointment:'.$appointment->id]);
+                $tasks->create($company, $appointment->customer, 'confirmation', $appointment->scheduled_at->copy()->subHours($company->confirmation_hours), [
+                    'appointment' => $appointment,
+                    'service' => $appointment->service,
+                    'pet' => $appointment->pet,
+                    'cycle_key' => 'appointment:'.$appointment->id,
+                ]);
             });
 
-            Customer::withoutGlobalScopes()->with(['appointments.service', 'company'])->where('company_id', $company->id)->whereNull('opted_out_at')->whereDoesntHave('appointments', fn ($query) => $query->whereIn('status', ['scheduled', 'confirmed', 'reschedule_requested'])->where('scheduled_at', '>', $now))->each(function (Customer $customer) use ($tasks, $company, $now): void {
+            Customer::withoutGlobalScopes()->with(['appointments.service', 'appointments.pet', 'company'])->where('company_id', $company->id)->whereNull('opted_out_at')->whereDoesntHave('appointments', fn ($query) => $query->whereIn('status', ['scheduled', 'confirmed', 'reschedule_requested'])->where('scheduled_at', '>', $now))->each(function (Customer $customer) use ($tasks, $company, $now): void {
                 $last = $customer->appointments->where('status', 'completed')->sortByDesc('scheduled_at')->first();
                 $returnAt = $customer->next_return_at ?? ($last?->service?->return_interval_months ? $last->scheduled_at->copy()->addMonths($last->service->return_interval_months) : null);
                 if ($returnAt && $returnAt->lte($now)) {
-                    $tasks->create($company, $customer, 'recall', $returnAt, ['service' => $last?->service, 'cycle_key' => 'recall:'.($last?->service_id ?? 'general').':'.$returnAt->format('Y-m-d')]);
+                    $tasks->create($company, $customer, 'recall', $returnAt, [
+                        'service' => $last?->service,
+                        'pet' => $last?->pet,
+                        'cycle_key' => 'recall:'.($last?->service_id ?? 'general').':'.$returnAt->format('Y-m-d'),
+                    ]);
                 }
             });
 

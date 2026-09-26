@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use BackedEnum;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -48,6 +49,7 @@ class BusinessSettings extends Page implements HasForms
             'appointment_slot_minutes' => $company->appointment_slot_minutes ?? 60,
             'confirmation_hours' => $company->confirmation_hours ?? 24,
             'reactivation_months' => $company->reactivation_months ?? 6,
+            'business_breaks' => $company->business_breaks ?: [],
         ]);
     }
 
@@ -79,6 +81,13 @@ class BusinessSettings extends Page implements HasForms
                     30 => '30 minutos',
                     60 => '60 minutos',
                 ])->required(),
+                Repeater::make('business_breaks')->label('Intervalos bloqueados')->helperText('Ex.: almoço das 12h às 13h.')->schema([
+                    TextInput::make('label')->label('Nome')->placeholder('Almoço'),
+                    TextInput::make('start_hour')->label('Início (hora)')->numeric()->integer()->minValue(0)->maxValue(23)->required(),
+                    TextInput::make('start_minute')->label('Início (min)')->numeric()->integer()->minValue(0)->maxValue(59)->default(0)->required(),
+                    TextInput::make('end_hour')->label('Fim (hora)')->numeric()->integer()->minValue(0)->maxValue(23)->required(),
+                    TextInput::make('end_minute')->label('Fim (min)')->numeric()->integer()->minValue(0)->maxValue(59)->default(0)->required(),
+                ])->columns(5)->default([]),
             ]),
             Section::make('Regras de contato')->schema([
                 TextInput::make('confirmation_hours')->label('Antecedência de confirmação')->numeric()->integer()->minValue(1)->maxValue(72)->suffix('horas')->helperText('Quantas horas antes do atendimento a tarefa de confirmação é criada.')->required(),
@@ -95,7 +104,10 @@ class BusinessSettings extends Page implements HasForms
         $data['confirmation_hours'] = (int) $data['confirmation_hours'];
         $data['reactivation_months'] = (int) $data['reactivation_months'];
 
-        auth()->user()->company->update($data);
+        auth()->user()->company->update([
+            ...$data,
+            'hours_configured_at' => now(),
+        ]);
 
         Notification::make()->title('Horários e regras atualizados.')->success()->send();
     }

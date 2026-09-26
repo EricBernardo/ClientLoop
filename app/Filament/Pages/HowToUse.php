@@ -19,4 +19,12 @@ class HowToUse extends Page
     protected static ?string $title = 'Como usar o ClientLoop';
 
     protected string $view = 'filament.pages.how-to-use';
+
+    public function mount(): void
+    {
+        $company = auth()->user()?->company;
+        if ($company && $company->guide_viewed_at === null) {
+            $company->forceFill(['guide_viewed_at' => now()])->saveQuietly();
+        }
+    }
 }

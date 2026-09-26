@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\AppointmentConfirmationController;
 use App\Http\Controllers\ImportTemplateController;
+use App\Http\Controllers\PublicBookingController;
 use App\Http\Controllers\RegistrationController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
@@ -9,6 +11,12 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
+
+Route::get('/agendar/{token}', [PublicBookingController::class, 'show'])->name('booking.show');
+Route::post('/agendar/{token}', [PublicBookingController::class, 'store'])->name('booking.store');
+Route::get('/confirmar/{token}', [AppointmentConfirmationController::class, 'show'])->name('appointment.confirm.show');
+Route::post('/confirmar/{token}', [AppointmentConfirmationController::class, 'confirm'])->name('appointment.confirm.submit');
+Route::post('/confirmar/{token}/cancelar', [AppointmentConfirmationController::class, 'cancel'])->name('appointment.confirm.cancel');
 
 Route::get('/register', [RegistrationController::class, 'create'])->name('register');
 Route::post('/register', [RegistrationController::class, 'store'])->name('register.store');

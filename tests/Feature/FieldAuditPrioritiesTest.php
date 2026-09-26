@@ -29,7 +29,7 @@ class FieldAuditPrioritiesTest extends TestCase
     {
         $this->assertFalse(Schema::hasColumn('package_offers', 'service_id'));
         $this->assertFalse(Schema::hasColumn('pet_packages', 'service_id'));
-        $this->assertFalse(Schema::hasColumn('company_subscriptions', 'ends_at'));
+        $this->assertTrue(Schema::hasColumn('company_subscriptions', 'ends_at'));
     }
 
     public function test_campaign_recipients_contact_task_foreign_key_exists(): void

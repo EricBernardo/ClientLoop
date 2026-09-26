@@ -30,7 +30,7 @@ class RegistrationController extends Controller
                 ['name' => 'Teste gratuito'],
                 ['contact_limit' => 500, 'task_limit' => 1000, 'is_default' => true],
             );
-            CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'trial', 'starts_at' => now()]);
+            CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'trial', 'starts_at' => now(), 'ends_at' => now()->addDays(14)]);
             $messageTemplates->provision($company);
 
             return User::create([
@@ -38,6 +38,7 @@ class RegistrationController extends Controller
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => $data['password'],
+                'role' => 'owner',
                 'email_verified_at' => $requireVerification ? null : now(),
             ]);
         });

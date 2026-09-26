@@ -36,6 +36,8 @@ final class InterfaceLabels
         'scheduled' => 'Agendou',
         'no_response' => 'Sem resposta',
         'opt_out' => 'Não receber contato',
+        'no_show' => 'Falta no horário',
+        'cancelled' => 'Cancelada com o horário',
     ];
 
     /** @var array<string, string> */
@@ -58,6 +60,24 @@ final class InterfaceLabels
         'active' => 'Ativa',
         'suspended' => 'Suspensa',
         'cancelled' => 'Cancelada',
+    ];
+
+    /** @var array<string, string> */
+    private const ACTIVITY_EVENTS = [
+        'contact_task.completed' => 'Tarefa concluída',
+        'contact_task.no_response_retry' => 'Sem resposta (nova tentativa)',
+        'customer.opted_out' => 'Opt-out de contato',
+        'customer.opted_in' => 'Novo consentimento',
+        'appointment.rescheduled' => 'Agendamento reagendado',
+        'appointment.no_show' => 'Falta registrada',
+        'appointment.cancelled' => 'Agendamento cancelado',
+        'appointment.undo_complete' => 'Conclusão desfeita',
+    ];
+
+    /** @var array<string, string> */
+    private const USER_ROLES = [
+        'owner' => 'Dono',
+        'attendant' => 'Atendente',
     ];
 
     public static function appointmentStatus(?string $value): string
@@ -171,6 +191,38 @@ final class InterfaceLabels
             'cancelled' => 'gray',
             default => 'warning',
         };
+    }
+
+    /** @return array<string, string> */
+    public static function activityEvents(): array
+    {
+        return self::ACTIVITY_EVENTS;
+    }
+
+    public static function activityEvent(?string $value): string
+    {
+        return self::label(self::ACTIVITY_EVENTS, $value);
+    }
+
+    public static function activityEventColor(?string $value): string
+    {
+        return match ($value) {
+            'customer.opted_in', 'contact_task.completed' => 'success',
+            'appointment.rescheduled', 'contact_task.no_response_retry', 'appointment.undo_complete' => 'warning',
+            'customer.opted_out', 'appointment.no_show', 'appointment.cancelled' => 'danger',
+            default => 'gray',
+        };
+    }
+
+    /** @return array<string, string> */
+    public static function userRoles(): array
+    {
+        return self::USER_ROLES;
+    }
+
+    public static function userRole(?string $value): string
+    {
+        return self::label(self::USER_ROLES, $value);
     }
 
     /** @param array<string, string> $labels */

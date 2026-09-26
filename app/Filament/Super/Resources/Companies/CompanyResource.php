@@ -7,11 +7,13 @@ use App\Filament\Super\Resources\Companies\Pages\ListCompanies;
 use App\Models\Company;
 use App\Models\CompanySubscription;
 use App\Models\Plan;
+use App\Models\User;
 use App\Support\InterfaceLabels;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -44,8 +46,44 @@ class CompanyResource extends Resource
             TextColumn::make('created_at')->label('Cadastro')->dateTime('d/m/Y'),
         ])->recordActions([
             Action::make('trocarPlano')->label('Trocar plano')->color('info')->form([Select::make('plan_id')->label('Plano')->options(fn () => Plan::query()->pluck('name', 'id'))->searchable()->preload()->required()])->action(function (Company $record, array $data): void {
-                CompanySubscription::withoutGlobalScopes()->updateOrCreate(['company_id' => $record->id], ['plan_id' => $data['plan_id'], 'status' => $record->status, 'starts_at' => now()]);
+                $payload = [
+                    'plan_id' => $data['plan_id'],
+                    'status' => $record->status,
+                    'starts_at' => now(),
+                ];
+
+                if ($record->status === 'trial') {
+                    $payload['ends_at'] = now()->addDays(14);
+                }
+
+                CompanySubscription::withoutGlobalScopes()->updateOrCreate(['company_id' => $record->id], $payload);
             }),
+            Action::make('promoverSuperadmin')
+                ->label('Promover superadmin')
+                ->color('warning')
+                ->form([
+                    Select::make('user_id')
+                        ->label('Usuário da empresa')
+                        ->options(fn (Company $record): array => $record->users()->orderBy('name')->pluck('name', 'id')->all())
+                        ->searchable()
+                        ->preload()
+                        ->required(),
+                ])
+                ->requiresConfirmation()
+                ->modalHeading('Promover a superadmin')
+                ->modalDescription('Esta pessoa passa a acessar o painel /platform.')
+                ->action(function (Company $record, array $data): void {
+                    $updated = User::query()
+                        ->whereKey($data['user_id'])
+                        ->where('company_id', $record->id)
+                        ->update(['is_super_admin' => true]);
+
+                    if ($updated) {
+                        Notification::make()->success()->title('Usuário promovido a superadmin')->send();
+                    } else {
+                        Notification::make()->danger()->title('Usuário não encontrado nesta empresa')->send();
+                    }
+                }),
             Action::make('suspender')->label('Suspender')->color('danger')->visible(fn (Company $record) => $record->status === 'active')->requiresConfirmation()->action(fn (Company $record) => $record->update(['status' => 'suspended'])),
             Action::make('ativar')->label('Ativar')->color('success')->visible(fn (Company $record) => in_array($record->status, ['trial', 'suspended'], true))->action(fn (Company $record) => $record->update(['status' => 'active'])),
             EditAction::make()->color('info')->url(fn (Company $record) => self::getUrl('edit', ['record' => $record])),

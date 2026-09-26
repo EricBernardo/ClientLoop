@@ -8,6 +8,7 @@ use App\Filament\Resources\Appointments\Pages\CreateAppointment;
 use App\Filament\Resources\Appointments\Pages\EditAppointment;
 use App\Filament\Resources\Appointments\Pages\ListAppointments;
 use App\Models\Appointment;
+use App\Models\Groomer;
 use App\Models\Pet;
 use App\Models\PetPackage;
 use App\Models\Service;
@@ -100,9 +101,57 @@ class AppointmentResource extends Resource
                     }
 
                     return PetPackage::query()->with('pet')->where('payment_status', 'paid')->where('pet_id', $petId)->get()->filter(fn (PetPackage $package): bool => $package->isUsableFor((int) $petId, $serviceId))->mapWithKeys(fn (PetPackage $package): array => [$package->id => $package->name.' — próxima etapa: '.app(PackageService::class)->nextItem($package)?->service_name])->all();
-                })->searchable()->preload()->disabled(fn (Get $get): bool => blank($get('pet_id')) || blank($get('service_id')))->default(fn (): ?string => request('pet_package_id'))->helperText('Escolha pet e serviço para ver os pacotes compatíveis.'),
+                })->searchable()->preload()->disabled(fn (Get $get): bool => blank($get('pet_id')) || blank($get('service_id')))->default(fn (): ?string => request('pet_package_id'))->helperText(function (Get $get): string {
+                    $petId = $get('pet_id');
+                    $serviceId = $get('service_id');
+                    $selected = $get('pet_package_id');
+
+                    if (blank($petId) || blank($serviceId)) {
+                        return 'Escolha pet e serviço para ver os pacotes compatíveis.';
+                    }
+
+                    if (blank($selected)) {
+                        $hasUsable = PetPackage::query()
+                            ->where('payment_status', 'paid')
+                            ->where('pet_id', $petId)
+                            ->get()
+                            ->contains(fn (PetPackage $package): bool => $package->isUsableFor((int) $petId, $serviceId));
+
+                        if ($hasUsable) {
+                            return 'Atenção: este pet tem pacote utilizável. Selecione o pacote para baixar o crédito na conclusão.';
+                        }
+                    }
+
+                    return 'Escolha pet e serviço para ver os pacotes compatíveis.';
+                }),
+                Select::make('groomer_id')
+                    ->label('Tosador')
+                    ->options(fn (): array => Groomer::query()->where('active', true)->orderBy('name')->pluck('name', 'id')->all())
+                    ->searchable()
+                    ->preload()
+                    ->default(fn (): ?string => request('groomer_id')),
                 HourlyDateTimePicker::make('scheduled_at')->label('Data e horário')->default(fn (): string => request('scheduled_at', now()->startOfHour()->format('Y-m-d H:i:s')))->required(),
                 TextInput::make('duration_minutes')->label('Duração (minutos)')->numeric()->integer()->minValue(5)->default(fn (): int => Service::query()->find(request('service_id'))?->duration_minutes ?? 60)->required(),
+                TextInput::make('recurrence_weeks')
+                    ->label('Repetir a cada (semanas)')
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->maxValue(12)
+                    ->default(1)
+                    ->visibleOn('create')
+                    ->dehydrated(false)
+                    ->helperText('Opcional: gera visitas recorrentes a partir deste horário.'),
+                TextInput::make('recurrence_count')
+                    ->label('Quantidade de visitas')
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->maxValue(12)
+                    ->default(1)
+                    ->visibleOn('create')
+                    ->dehydrated(false)
+                    ->helperText('Inclui este agendamento. Máximo 12.'),
                 Hidden::make('status')->default('scheduled'),
             ]);
     }
@@ -133,6 +182,57 @@ class AppointmentResource extends Resource
                         Notification::make()->danger()->title('Não foi possível concluir o atendimento')->body(collect($exception->errors())->flatten()->first())->send();
                     }
                 }),
+                Action::make('desfazerConclusao')
+                    ->label('Desfazer conclusão')
+                    ->color('warning')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->requiresConfirmation()
+                    ->modalHeading('Desfazer conclusão')
+                    ->modalDescription('O atendimento volta para confirmado e o crédito do pacote (se houver) é restaurado.')
+                    ->visible(fn (Appointment $record): bool => $record->status === 'completed')
+                    ->action(function (Appointment $record): void {
+                        try {
+                            app(AppointmentService::class)->undoComplete($record);
+                            $record->refresh();
+                            Notification::make()->success()->title('Conclusão desfeita')->send();
+                        } catch (ValidationException $exception) {
+                            Notification::make()->danger()->title('Não foi possível desfazer')->body(collect($exception->errors())->flatten()->first())->send();
+                        }
+                    }),
+                Action::make('falta')
+                    ->label('Falta')
+                    ->color('danger')
+                    ->icon('heroicon-o-user-minus')
+                    ->requiresConfirmation()
+                    ->modalHeading('Marcar falta')
+                    ->modalDescription('O horário fica livre na agenda. O crédito do pacote não é baixado.')
+                    ->visible(fn (Appointment $record): bool => in_array($record->status, ['scheduled', 'confirmed'], true))
+                    ->action(function (Appointment $record): void {
+                        try {
+                            app(AppointmentService::class)->markNoShow($record);
+                            $record->refresh();
+                            Notification::make()->success()->title('Falta registrada')->send();
+                        } catch (ValidationException $exception) {
+                            Notification::make()->danger()->title('Não foi possível marcar a falta')->body(collect($exception->errors())->flatten()->first())->send();
+                        }
+                    }),
+                Action::make('cancelar')
+                    ->label('Cancelar')
+                    ->color('gray')
+                    ->icon('heroicon-o-x-circle')
+                    ->requiresConfirmation()
+                    ->modalHeading('Cancelar agendamento')
+                    ->modalDescription('O horário fica livre na agenda. O crédito do pacote não é baixado.')
+                    ->visible(fn (Appointment $record): bool => in_array($record->status, ['scheduled', 'confirmed', 'reschedule_requested'], true))
+                    ->action(function (Appointment $record): void {
+                        try {
+                            app(AppointmentService::class)->cancel($record);
+                            $record->refresh();
+                            Notification::make()->success()->title('Agendamento cancelado')->send();
+                        } catch (ValidationException $exception) {
+                            Notification::make()->danger()->title('Não foi possível cancelar')->body(collect($exception->errors())->flatten()->first())->send();
+                        }
+                    }),
                 Action::make('agendarProximaEtapa')->label('Agendar próxima etapa')->color('primary')->icon('heroicon-o-calendar-days')->visible(fn (Appointment $record): bool => $record->status === 'completed' && self::nextPackageAppointmentUrl($record) !== null)->url(fn (Appointment $record): string => self::nextPackageAppointmentUrl($record) ?? self::getUrl('index')),
                 Action::make('reagendar')->label('Reagendar')->color('info')->icon('heroicon-o-calendar-days')->visible(fn (Appointment $record) => in_array($record->status, ['scheduled', 'confirmed', 'reschedule_requested'], true))->form([HourlyDateTimePicker::make('scheduled_at')->label('Nova data e horário')->required()->after('now')])->action(function (Appointment $record, array $data): void {
                     try {

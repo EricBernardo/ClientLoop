@@ -81,6 +81,36 @@ class Calendar extends Page
         return auth()->user()?->company?->business_ends_at_hour ?? 17;
     }
 
+    public function getAppointmentSlotMinutesProperty(): int
+    {
+        $slotMinutes = (int) (auth()->user()?->company?->appointment_slot_minutes ?? 60);
+
+        return in_array($slotMinutes, [15, 30, 60], true) ? $slotMinutes : 60;
+    }
+
+    /**
+     * @return array<int, array{hour: int, minute: int, label: string, top: float}>
+     */
+    public function getTimeSlotsProperty(): array
+    {
+        $slots = [];
+        $slotMinutes = $this->appointmentSlotMinutes;
+        $totalMinutes = ($this->businessEndsAtHour - $this->businessStartsAtHour) * 60;
+
+        for ($minutes = 0; $minutes < $totalMinutes; $minutes += $slotMinutes) {
+            $hour = $this->businessStartsAtHour + intdiv($minutes, 60);
+            $minute = $minutes % 60;
+            $slots[] = [
+                'hour' => $hour,
+                'minute' => $minute,
+                'label' => sprintf('%02d:%02d', $hour, $minute),
+                'top' => ($minutes / $totalMinutes) * 100,
+            ];
+        }
+
+        return $slots;
+    }
+
     /** @return array<int, int> */
     public function getBusinessDaysProperty(): array
     {
@@ -97,9 +127,9 @@ class Calendar extends Page
         return static::getUrl(['date' => $date->toDateString(), 'mode' => $mode ?? $this->mode]);
     }
 
-    public function createUrl(Carbon $day, int $hour): string
+    public function createUrl(Carbon $day, int $hour, int $minute = 0): string
     {
-        return AppointmentResource::getUrl('create', ['scheduled_at' => $day->copy()->setTime($hour, 0)->format('Y-m-d H:i:s')]);
+        return AppointmentResource::getUrl('create', ['scheduled_at' => $day->copy()->setTime($hour, $minute)->format('Y-m-d H:i:s')]);
     }
 
     private function firstDay(): Carbon

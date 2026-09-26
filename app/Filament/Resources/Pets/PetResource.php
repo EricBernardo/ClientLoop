@@ -57,6 +57,10 @@ class PetResource extends Resource
             TextInput::make('species')->label('Espécie')->placeholder('Ex.: Cachorro'),
             TextInput::make('breed')->label('Raça'),
             Select::make('size')->label('Porte')->options(['small' => 'Pequeno', 'medium' => 'Médio', 'large' => 'Grande'])->searchable(),
+            TextInput::make('temperament')->label('Temperamento')->placeholder('Ex.: Calmo, agitado'),
+            TextInput::make('coat')->label('Pelagem')->placeholder('Ex.: Curta, longa'),
+            TextInput::make('allergies')->label('Alergias'),
+            TextInput::make('weight_kg')->label('Peso (kg)')->numeric()->minValue(0)->step(0.01),
             Textarea::make('notes')->label('Observações')->columnSpanFull(),
         ]);
     }

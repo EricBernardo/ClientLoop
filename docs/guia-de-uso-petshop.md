@@ -67,7 +67,8 @@ Se o seed rodou (`php artisan migrate --seed` ou equivalente):
 
 | Papel | URL | E-mail | Senha |
 |---|---|---|---|
-| Loja demo (Pet Shop Patinhas) | `/admin` | `demo@clientloop.test` | `clientloop123` |
+| Dona da loja (Pet Shop Patinhas) | `/admin` | `demo@clientloop.test` | `clientloop123` |
+| Atendente | `/admin` | `atendente@clientloop.test` | `clientloop123` |
 | Superadmin da plataforma | `/platform` | `admin@clientloop.test` | `clientloop123` |
 
 O que a demo já deixa pronto está no [apêndice](#apendice-a-o-que-a-demo-ja-cria).
@@ -78,11 +79,12 @@ Cards (clicáveis):
 
 - **Agenda de hoje** — atendimentos do dia (exceto cancelados e faltas).
 - **Tarefas pendentes** — confirmações, retornos e reativações a tratar.
+- **Tarefas atrasadas** — vencimento passou / sem resultado há horas.
 - **Pacotes com pouco saldo** — pagos com 1 crédito ou menos.
 - **Próximas etapas de pacote** — pacotes pagos que ainda têm visita.
 - **Pacotes vencidos** — `Válido até` anterior a hoje.
 
-Menu principal que você vai usar: **Como usar**, **Agenda**, **Pets**, **Responsáveis**, **Serviços**, **Pacotes**, **Campanhas**, **Horários de atendimento**, **Modelos de pacotes**, **Importações**, **Mensagens** (rótulos podem variar levemente; a lista de agendamentos e a fila de contatos também abrem pelos cards, porque não ficam no menu).
+Menu principal que você vai usar: **Como usar**, **Agenda**, **Fila de contatos**, **Lista de atendimentos**, **Lista de espera**, **Relatórios**, **Pets**, **Responsáveis**, **Serviços**, **Tosadores**, **Pacotes**, **Campanhas**, **Horários e regras**, **Modelos de pacotes**, **Importações**, **Mensagens**, **Equipe**, **Histórico de ações**.
 
 ---
 
@@ -90,21 +92,21 @@ Menu principal que você vai usar: **Como usar**, **Agenda**, **Pets**, **Respon
 
 Faça nesta ordem. Sem serviço e horário, a agenda não fecha o ciclo. Sem modelo, você não vende pacote. Sem mensagem, a tarefa de confirmação nasce sem texto pronto.
 
-### Passo 1 — Horários de atendimento
+### Passo 1 — Horários e regras
 
-Menu **Configurações → Horários de atendimento** (`/admin/business-settings`).
+Menu **Configurações → Horários e regras** (`/admin/business-settings`).
 
 1. Marque os dias (padrão: segunda a sábado).
 2. Informe início e fim do expediente (padrão: **9h às 17h**).
-3. Salve.
+3. Escolha o **intervalo da agenda**: 15, 30 ou 60 minutos (padrão: 60).
+4. Ajuste a **antecedência da confirmação** em horas (padrão: **24**) e os **meses de reativação** (padrão: **6**).
+5. Salve.
 
-Regras fixas nesta versão:
+Regras desta versão:
 
-- Horários cheios de **60 em 60 minutos** (09:00, 10:00…).
+- Os horários da agenda e do seletor de data/hora respeitam o intervalo escolhido (ex.: de 30 em 30 → 09:00, 09:30…).
 - O atendimento **inteiro** precisa caber no expediente. Uma tosa de 120 minutos às 16h, com fechamento às 17h, é recusada.
 - Dia fora da lista (ex.: domingo, se você não atende) é recusado.
-
-A antecedência da confirmação (padrão **24 horas**) e os meses de reativação (padrão **6**) **não** se ajustam nesta tela. Isso fica no painel da plataforma (`/platform`), no cadastro da empresa.
 
 ### Passo 2 — Serviços
 
@@ -160,7 +162,7 @@ Texto de exemplo:
 Olá, {{responsavel}}! O banho de {{pet}} está marcado para {{data}} às {{horario}}. Podemos confirmar?
 ```
 
-Variáveis permitidas: `{{responsavel}}`, `{{cliente}}` (mesmo valor), `{{pet}}`, `{{empresa}}`, `{{servico}}`, `{{data}}`, `{{horario}}`, `{{link_agendamento}}` (hoje sai **vazio**). Qualquer outra variável impede salvar.
+Variáveis permitidas: `{{responsavel}}`, `{{pet}}`, `{{empresa}}`, `{{servico}}`, `{{data}}`, `{{horario}}`. Qualquer outra variável impede salvar.
 
 O sistema pega o primeiro modelo **ativo** daquele tipo da loja. Se não houver modelo, a tarefa ainda pode ser criada, mas sem texto preenchido.
 
@@ -214,19 +216,18 @@ Quando o horário entra na janela de confirmação (padrão: nas próximas 24 ho
 php artisan clientloop:generate-tasks
 ```
 
-1. No dashboard, clique **Tarefas pendentes**.
-2. Na linha: **Abrir WhatsApp** (nova aba `wa.me` com a mensagem já montada).
-3. Depois da conversa: **Registrar resultado**.
+1. No dashboard, clique **Tarefas pendentes** (ou abra **Fila de contatos** no menu).
+2. Na linha: **WhatsApp e registrar** — abre `wa.me` e, na mesma tela, você escolhe o resultado.
 
 | Resultado | Efeito no agendamento | Efeito na tarefa |
 |---|---|---|
 | Confirmou | Vai para **Confirmado** | Concluída |
 | Pediu alteração | Vai para **Alteração solicitada** | Concluída |
-| Agendou | Não muda o horário sozinho (use em retorno/reativação) | Concluída |
-| Sem resposta | Continua **Agendado** | Concluída |
+| Agendou | Não muda o horário sozinho; abre a tela de **novo agendamento** com o responsável (use em retorno/reativação) | Concluída |
+| Sem resposta | Continua **Agendado** | Em **confirmação**, a 1ª vez mantém a tarefa pendente para retry; a 2ª encerra. Em retorno/reativação, conclui na 1ª |
 | Não receber contato | Opt-out no responsável; outras tarefas pendentes cancelam | Concluída |
 
-A geração é **idempotente**: rodar o comando duas vezes não duplica a mesma confirmação daquele agendamento.
+A geração é **idempotente**: rodar o comando duas vezes não duplica a mesma confirmação daquele agendamento (enquanto a tarefa ainda estiver pendente no retry, o gerador também não cria outra).
 
 ### 2.4 No dia: atender e concluir
 
@@ -349,11 +350,17 @@ Há dois jeitos.
 
 ### Fluxo: ninguém respondeu o WhatsApp
 
-1. Na tarefa de confirmação, registre **Sem resposta**.
+1. Na tarefa de **confirmação**, registre **Sem resposta** pela primeira vez.
 
-**Esperado.** Tarefa concluída. Agendamento **continua Agendado**. Você ainda pode concluir no dia, reagendar, ou confirmar depois (não pela mesma tarefa; ela já encerrou).
+**Esperado.** A tentativa é gravada. A tarefa **continua pendente** (para você tentar de novo). O agendamento **continua Agendado**.
 
-**Não acontece.** Não cancela o horário automaticamente. Não gera segunda confirmação para o mesmo agendamento (a chave é única).
+2. Registre **Sem resposta** de novo na mesma tarefa.
+
+**Esperado.** Tarefa concluída com resultado Sem resposta. Agendamento ainda **Agendado**. Você ainda pode concluir no dia, reagendar, ou marcar falta/cancelar.
+
+Em tarefas de **retorno** ou **reativação**, a primeira “Sem resposta” já encerra a tarefa.
+
+**Não acontece.** Não cancela o horário automaticamente. O gerador não cria uma segunda tarefa de confirmação com outra chave enquanto a atual ainda está pendente.
 
 ---
 
@@ -369,14 +376,14 @@ Há dois jeitos.
 
 ### Fluxo: faltou ou cancelou
 
-Os estados **Não compareceu** e **Cancelado** existem. Saindo para eles, o horário **some da grade** da agenda (e do card “hoje”).
+Os estados **Não compareceu** e **Cancelado** existem. Use os botões **Falta** e **Cancelar** na lista de atendimentos ou na edição do agendamento.
 
-**Lacuna de interface:** não há botão “Marcar falta” nem “Cancelar horário” na lista. Dá para filtrar por essas situações, mas a mudança típica na tela do dia a dia é **Reagendar**, **Concluir** ou editar o registro.
+1. **Falta** — disponível em Agendado ou Confirmado. Libera o horário na agenda; cancela tarefas pendentes daquele horário.
+2. **Cancelar** — disponível também em Alteração solicitada. Mesmo efeito de liberar o slot.
 
-Se você só apagar o agendamento, perde o histórico. Prefira entender isso como ponto frágil ao avaliar o produto: o domínio prevê falta/cancelamento; a operação diária quase não expõe isso.
+**Pacote:** falta ou cancelamento **não** baixam crédito (o crédito só existe ao concluir).
 
-**Pacote:** falta ou cancelamento **não** devem baixar crédito (o crédito só existe ao concluir).
-
+Se você só apagar o agendamento, perde o histórico — prefira **Falta** ou **Cancelar**.
 ---
 
 ### Fluxo: concluiu sem confirmar
@@ -529,10 +536,8 @@ De propósito (não busque na interface):
 - Vários tosadores no mesmo horário
 - PIX, maquininha, boleto, nota fiscal
 - API oficial de WhatsApp (envio automático)
-- Link de autoagendamento (`{{link_agendamento}}` vazio)
+- Link de autoagendamento público do tutor
 - Conta a receber por atendimento (preço do serviço é sugestão)
-- Antecedência de confirmação e meses de reativação **pela loja** (só `/platform`)
-- Botões óbvios de falta e cancelamento, embora os estados existam
 
 Se o seu teste era “vender shampoo + banho + hospedagem no feriado”, o produto **não** vai fechar esse ciclo. Se o teste era “Thor de 15 em 15 dias no pacote, confirmar ontem, baixar crédito só quando sair molhado”, o ciclo fecha.
 
@@ -561,17 +566,27 @@ Situações da tarefa: Pendente, Concluída, Cancelada.
 
 ## Apêndice A — O que a demo já cria
 
-Empresa **Pet Shop Patinhas**, expediente seg–sáb 9h–17h.
+Empresa **Pet Shop Patinhas**, expediente seg–sáb 9h–17h, intervalo de **30 min**, almoço bloqueado **12h–13h**. Link público de agendamento: `/agendar/patinhas-demo-booking`.
 
-**Serviços:** Banho (60 min), Tosa (120 min), Banho com higiênico e hidratação (60 min).
+**Contas**
+
+| Papel | URL | E-mail | Senha |
+|---|---|---|---|
+| Dona da loja | `/admin` | `demo@clientloop.test` | `clientloop123` |
+| Atendente | `/admin` | `atendente@clientloop.test` | `clientloop123` |
+| Superadmin | `/platform` | `admin@clientloop.test` | `clientloop123` |
+
+**Tosadores:** Marina e Paula (ativos).
+
+**Serviços:** Banho (60 min, retorno 1 mês), Tosa (120 min), Banho com higiênico e hidratação (60 min).
 
 **Pessoas e pets**
 
 | Responsável | Telefone (demo) | Pets |
 |---|---|---|
-| Ana Beatriz Lima | 5511998765432 | Thor (cão, Shih-tzu, pequeno) |
-| Carlos Eduardo Alves | 5511987654321 | Mel (cão, Labrador, grande) |
-| Fernanda Souza | 5511976543210 | Nina (gato, Siamês, pequeno) |
+| Ana Beatriz Lima | 5511998765432 | Thor (cão, Shih-tzu, pequeno, calmo) |
+| Carlos Eduardo Alves | 5511987654321 | Mel (cão, Labrador, grande, agitado; alergia a perfume) |
+| Fernanda Souza | 5511976543210 | Nina (gato, Siamês, pequeno, arisco) |
 | João Pedro Martins | 5511965432109 | Bob (cão, SRD, médio) — João inativo há ~9 meses |
 | Mariana Oliveira | 5511954321098 | Amora e Pingo |
 
@@ -583,19 +598,24 @@ Empresa **Pet Shop Patinhas**, expediente seg–sáb 9h–17h.
 
 **Agenda** (datas relativas ao dia em que o seed rodou)
 
-- Thor: banho 09:00 no **próximo** dia útil, agendado, com pacote; confirmação já na fila.
-- Mel: tosa 11:00 no próximo dia útil, **confirmada**, **sem** pacote.
-- Amora: banho 14:00 no próximo dia útil, agendado, com pacote; confirmação na fila.
-- Nina: higiênico 10:00 no dia útil **seguinte**, confirmado.
-- Thor: banho concluído no **último** dia útil, com baixa de crédito.
+- Thor + Mel às **09:00** no próximo dia útil, em paralelo (Marina / Paula).
+- Amora + Pingo às **14:00** no próximo dia útil, em paralelo.
+- Nina: higiênico 10:00 no dia útil seguinte (confirmado) **e** mesma hora na semana seguinte (recorrência).
+- Thor: banho concluído no último dia útil, com baixa de crédito.
+- Bob: **falta** no último dia útil às 15:00 — follow-up de remarcar já na fila.
 
-**Mensagens:** confirmação, retorno, reativação.
+**Lista de espera:** Nina (Fernanda) pedindo encaixe às 15:00 no próximo dia útil.
 
-**Campanha rascunho:** “Pets para reativar”.
+**Mensagens:** confirmação, retorno e reativação (com `{{link_agendamento}}` / `{{link_confirmacao}}` onde cabe).
 
-**Tarefa extra:** reativação do João/Bob já pendente.
+**Campanhas**
 
-Use a demo para pular o setup e ir direto aos fluxos: pagar o pacote da Mel, concluir o Thor e clicar **Agendar próxima etapa**, abrir WhatsApp da Amora, tratar o João.
+- Rascunho **Pets para reativar**.
+- Rascunho agendado **Retornos da semana** (`starts_at` amanhã).
+
+**Fila:** confirmações de Thor e Amora; reativação do João; follow-up da falta do Bob.
+
+Use a demo para pular o setup e ir direto aos fluxos: pagar o pacote da Mel, concluir o Thor e clicar **Agendar próxima etapa**, abrir WhatsApp da Amora, tratar o João, promover a lista de espera da Nina, abrir o link público `/agendar/patinhas-demo-booking`.
 
 ---
 
@@ -607,9 +627,21 @@ Gerar confirmações, retornos e reativações:
 php artisan clientloop:generate-tasks
 ```
 
-No Docker do projeto, o scheduler dispara isso **de hora em hora**. Só empresas `trial` ou `active`.
+Lançar campanhas com data de início vencida:
 
-**Painel `/platform`** (superadmin): empresas (status, antecedência de confirmação em horas, meses de reativação) e planos (limites). Promover um usuário normal exige `users.is_super_admin = true` no banco, na fase inicial.
+```sh
+php artisan clientloop:launch-campaigns
+```
+
+Suspender trials vencidos:
+
+```sh
+php artisan clientloop:expire-trials
+```
+
+No Docker do projeto, o scheduler dispara a geração de tarefas **de hora em hora**. Só empresas `trial` ou `active`.
+
+**Painel `/platform`** (superadmin): empresas (status, plano) e planos (limites). Antecedência de confirmação e meses de reativação também podem ser ajustados pela loja em **Horários e regras**. Conta superadmin da demo: `admin@clientloop.test` / `clientloop123`.
 
 Lista de agendamentos: `/admin/appointments`.  
 Fila de contatos: `/admin/contact-tasks` (também pelos cards).
@@ -629,10 +661,12 @@ Faça em um caderno o visto em cada linha. Dois dias fictícios de expediente ba
 7. Pacote sequencial: concluir etapa 1, agendar próxima, tentar serviço errado.
 8. Tosa 16h (falha) e 15h (ok); dois horários sobrepostos (falha).
 9. Reagendar; ver tarefa antiga cancelada; gerar de novo.
-10. Sem resposta; concluir mesmo assim.
+10. Sem resposta (1ª tentativa mantém a tarefa; 2ª encerra); concluir mesmo assim.
 11. Opt-out; ver fila parar; novo consentimento.
 12. Ajustar retorno / inatividade; gerar recall e reativação; ativar uma campanha.
-13. Estourar (ou simular) cota se tiver plano apertado no `/platform`.
-14. Abrir outra empresa e confirmar que a agenda está vazia.
+13. Marcar **Falta** e **Cancelar** em horários de teste; conferir que o slot liberou e o pacote não baixou.
+14. Estourar (ou simular) cota se tiver plano apertado no `/platform`.
+15. Abrir outra empresa e confirmar que a agenda está vazia.
+16. Conferir **Histórico de ações** após opt-out / falta / conclusão de tarefa.
 
-Se algo dessa lista **não** puder ser feito pela tela, está documentado acima como lacuna (falta/cancelamento, WhatsApp automático, PDV). O restante fecha o ciclo que o ClientLoop se propõe a cuidar: **lembrar o próximo banho e a próxima conversa**.
+Se algo dessa lista **não** puder ser feito pela tela, está documentado acima como lacuna (WhatsApp automático, PDV). O restante fecha o ciclo que o ClientLoop se propõe a cuidar: **lembrar o próximo banho e a próxima conversa**.

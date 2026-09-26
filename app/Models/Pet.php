@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Pet extends TenantModel
 {
-    protected $fillable = ['company_id', 'customer_id', 'name', 'species', 'breed', 'size', 'notes'];
+    protected $fillable = ['company_id', 'customer_id', 'name', 'species', 'breed', 'size', 'temperament', 'coat', 'allergies', 'weight_kg', 'photo_path', 'notes'];
 
     public function customer(): BelongsTo
     {

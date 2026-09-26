@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Appointment;
 use App\Models\PackageRedemption;
+use App\Models\Pet;
 use App\Models\PetPackage;
 use App\Models\PetPackageItem;
 use Illuminate\Support\Facades\DB;
@@ -56,6 +57,37 @@ class PackageService
                 'appointment_id' => $appointment->id,
                 'redeemed_at' => now(),
             ]);
+        });
+    }
+
+    public function transfer(PetPackage $package, Pet $targetPet): PetPackage
+    {
+        return DB::transaction(function () use ($package, $targetPet): PetPackage {
+            $package = PetPackage::withoutGlobalScopes()->lockForUpdate()->findOrFail($package->id);
+            $package->loadMissing('pet.customer');
+
+            if ($targetPet->company_id !== $package->company_id) {
+                throw ValidationException::withMessages(['pet_id' => 'O pet de destino precisa ser da mesma loja.']);
+            }
+
+            if ($targetPet->customer_id !== $package->pet?->customer_id) {
+                throw ValidationException::withMessages(['pet_id' => 'Só é possível transferir saldo entre pets do mesmo responsável.']);
+            }
+
+            if ($package->pet_id === $targetPet->id) {
+                return $package;
+            }
+
+            if (Appointment::withoutGlobalScopes()
+                ->where('pet_package_id', $package->id)
+                ->whereIn('status', ['scheduled', 'confirmed', 'reschedule_requested'])
+                ->exists()) {
+                throw ValidationException::withMessages(['pet_id' => 'Cancele ou conclua os horários futuros deste pacote antes de transferir.']);
+            }
+
+            $package->update(['pet_id' => $targetPet->id]);
+
+            return $package->fresh();
         });
     }
 }

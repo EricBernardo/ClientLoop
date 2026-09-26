@@ -9,3 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('clientloop:generate-tasks')->hourly()->withoutOverlapping();
+Schedule::command('clientloop:launch-campaigns')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('clientloop:expire-trials')->hourly()->withoutOverlapping();

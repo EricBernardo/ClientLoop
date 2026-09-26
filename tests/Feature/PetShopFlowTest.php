@@ -129,6 +129,69 @@ class PetShopFlowTest extends TestCase
         $this->assertSame('completed', $appointment->fresh()->status);
     }
 
+    public function test_appointment_can_be_marked_no_show_without_consuming_package_credit(): void
+    {
+        [$company, $user] = $this->company();
+        $this->actingAs($user);
+        [$customer, $pet, $service] = $this->petData($company);
+        $offer = PackageOffer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => '2 banhos', 'credits' => 2]);
+        foreach (range(1, 2) as $position) {
+            PackageOfferItem::withoutGlobalScopes()->create(['company_id' => $company->id, 'package_offer_id' => $offer->id, 'service_id' => $service->id, 'position' => $position]);
+        }
+        $package = PetPackage::withoutGlobalScopes()->create(['company_id' => $company->id, 'pet_id' => $pet->id, 'package_offer_id' => $offer->id, 'payment_status' => 'paid', 'purchased_at' => today()]);
+        $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'pet_id' => $pet->id, 'service_id' => $service->id, 'pet_package_id' => $package->id, 'scheduled_at' => now()->addDays(2)->setTime(10, 0), 'status' => 'confirmed']);
+        ContactTask::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'appointment_id' => $appointment->id, 'type' => 'confirmation', 'priority' => 'high', 'due_at' => now(), 'status' => 'pending', 'cycle_key' => 'appointment:'.$appointment->id]);
+
+        app(AppointmentService::class)->markNoShow($appointment);
+
+        $this->assertSame('no_show', $appointment->fresh()->status);
+        $this->assertSame(0, PackageRedemption::query()->where('appointment_id', $appointment->id)->count());
+        $this->assertSame('cancelled', ContactTask::withoutGlobalScopes()->where('appointment_id', $appointment->id)->value('status'));
+        $this->assertDatabaseHas('activity_logs', ['event' => 'appointment.no_show', 'subject_id' => $appointment->id]);
+    }
+
+    public function test_appointment_can_be_cancelled_from_reschedule_requested(): void
+    {
+        [$company, $user] = $this->company();
+        $this->actingAs($user);
+        [$customer, $pet, $service] = $this->petData($company);
+        $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'pet_id' => $pet->id, 'service_id' => $service->id, 'scheduled_at' => now()->addDays(2)->setTime(11, 0), 'status' => 'reschedule_requested']);
+
+        app(AppointmentService::class)->cancel($appointment);
+
+        $this->assertSame('cancelled', $appointment->fresh()->status);
+        $this->assertDatabaseHas('activity_logs', ['event' => 'appointment.cancelled', 'subject_id' => $appointment->id]);
+    }
+
+    public function test_no_show_is_forbidden_from_reschedule_requested(): void
+    {
+        [$company, $user] = $this->company();
+        $this->actingAs($user);
+        [$customer, $pet, $service] = $this->petData($company);
+        $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'pet_id' => $pet->id, 'service_id' => $service->id, 'scheduled_at' => now()->addDays(2)->setTime(11, 0), 'status' => 'reschedule_requested']);
+
+        $this->expectException(ValidationException::class);
+        app(AppointmentService::class)->markNoShow($appointment);
+    }
+
+    public function test_appointment_rejects_time_not_aligned_to_company_slot_minutes(): void
+    {
+        [$company, $user] = $this->company();
+        $company->update(['appointment_slot_minutes' => 30]);
+        $this->actingAs($user);
+        [$customer, $pet, $service] = $this->petData($company);
+
+        $this->expectException(ValidationException::class);
+        Appointment::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $customer->id,
+            'pet_id' => $pet->id,
+            'service_id' => $service->id,
+            'scheduled_at' => now()->addDays(2)->setTime(10, 15),
+            'status' => 'scheduled',
+        ]);
+    }
+
     public function test_an_active_package_clears_the_return_until_its_next_step_is_completed(): void
     {
         [$company, $user] = $this->company();

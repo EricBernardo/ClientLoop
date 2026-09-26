@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 class Appointment extends TenantModel
 {
-    protected $fillable = ['company_id', 'customer_id', 'pet_id', 'service_id', 'pet_package_id', 'scheduled_at', 'duration_minutes', 'ends_at', 'status'];
+    protected $fillable = ['company_id', 'customer_id', 'pet_id', 'service_id', 'pet_package_id', 'groomer_id', 'scheduled_at', 'duration_minutes', 'ends_at', 'status', 'recurrence_group', 'confirmation_token'];
 
     protected function casts(): array
     {
@@ -36,6 +36,16 @@ class Appointment extends TenantModel
     public function package(): BelongsTo
     {
         return $this->belongsTo(PetPackage::class, 'pet_package_id');
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function groomer(): BelongsTo
+    {
+        return $this->belongsTo(Groomer::class);
     }
 
     public function packageRedemption(): HasOne
@@ -81,7 +91,9 @@ class Appointment extends TenantModel
                 'scheduled' => ['confirmed', 'reschedule_requested', 'cancelled', 'no_show', 'completed'],
                 'confirmed' => ['reschedule_requested', 'cancelled', 'no_show', 'completed'],
                 'reschedule_requested' => ['scheduled', 'cancelled'],
-                'cancelled' => [], 'no_show' => [], 'completed' => [],
+                'cancelled' => [],
+                'no_show' => [],
+                'completed' => ['confirmed'],
             ];
             if (! in_array($appointment->status, $allowed[$appointment->getOriginal('status')] ?? [], true)) {
                 throw ValidationException::withMessages(['status' => 'Esta mudança de situação não é permitida para o agendamento.']);
@@ -103,6 +115,11 @@ class Appointment extends TenantModel
         $overlaps = static::withoutGlobalScopes()
             ->where('company_id', $companyId)
             ->when($this->exists, fn ($query) => $query->whereKeyNot($this->getKey()))
+            ->when(
+                $this->groomer_id,
+                fn ($query) => $query->where('groomer_id', $this->groomer_id),
+                fn ($query) => $query->whereNull('groomer_id'),
+            )
             ->whereIn('status', ['scheduled', 'confirmed', 'reschedule_requested'])
             ->where('scheduled_at', '<', $this->ends_at)
             ->where('ends_at', '>', $this->scheduled_at)
@@ -138,10 +155,24 @@ class Appointment extends TenantModel
             throw ValidationException::withMessages(['scheduled_at' => 'Não há atendimento neste dia. Escolha um dia de segunda a sábado.']);
         }
         if ($scheduledAt->minute % $slotMinutes !== 0 || $scheduledAt->second !== 0) {
-            throw ValidationException::withMessages(['scheduled_at' => 'Escolha um horário cheio, como 09:00, 10:00 ou 11:00.']);
+            $examples = match ($slotMinutes) {
+                15 => '09:00, 09:15 ou 09:30',
+                30 => '09:00, 09:30 ou 10:00',
+                default => '09:00, 10:00 ou 11:00',
+            };
+
+            throw ValidationException::withMessages(['scheduled_at' => "Escolha um horário alinhado ao intervalo da agenda ({$slotMinutes} min), como {$examples}."]);
         }
         if ($scheduledAt->lt($opensAt) || $endsAt->gt($closesAt)) {
             throw ValidationException::withMessages(['scheduled_at' => 'Este atendimento termina fora do expediente. Escolha um horário que caiba na agenda.']);
+        }
+
+        foreach ($company->business_breaks ?? [] as $break) {
+            $breakStart = $scheduledAt->copy()->setTime((int) ($break['start_hour'] ?? 0), (int) ($break['start_minute'] ?? 0));
+            $breakEnd = $scheduledAt->copy()->setTime((int) ($break['end_hour'] ?? 0), (int) ($break['end_minute'] ?? 0));
+            if ($scheduledAt->lt($breakEnd) && $endsAt->gt($breakStart)) {
+                throw ValidationException::withMessages(['scheduled_at' => 'Este horário cai em um intervalo bloqueado (ex.: almoço). Escolha outro.']);
+            }
         }
     }
 }

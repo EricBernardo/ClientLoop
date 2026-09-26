@@ -87,8 +87,9 @@ class OperationalRulesTest extends TestCase
             ->assertOk()
             ->assertSee('Importar responsáveis e pets')
             ->assertDontSee('Agendamentos e histórico');
-        $this->get('/admin/how-to-use')->assertOk()->assertSee('Organize seu pet shop, um banho de cada vez.')->assertSee('Cadastre os serviços')->assertSee('Cadastre os pets');
+        $this->get('/admin/how-to-use')->assertOk()->assertSee('Organize seu pet shop, um banho de cada vez.')->assertSee('Cadastre os serviços')->assertSee('Cadastre os pets')->assertSee('Faltou ou cancelou?')->assertSee('Sem resposta no WhatsApp?');
         $this->get('/admin/appointments')->assertOk()->assertSee('Data e horário')->assertSee('Situação')->assertDontSee('Valor potencial')->assertSee('Agendado');
+        $this->get('/admin/activity-logs')->assertOk()->assertSee('Histórico de ações');
     }
 
     public function test_contact_queue_is_sorted_by_due_date_when_opened(): void
@@ -179,7 +180,14 @@ class OperationalRulesTest extends TestCase
 
     public function test_public_site_explains_product_and_exposes_registration(): void
     {
-        $this->get('/')->assertOk()->assertSee('Sua agenda, seus pets e seus pacotes no mesmo lugar.')->assertSee(route('register'))->assertSee('/images/clientloop-symbol.png');
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Sua agenda, seus pets e seus pacotes no mesmo lugar.')
+            ->assertSee('Link para o tutor')
+            ->assertSee('Lista de espera e campanhas')
+            ->assertSee('Fila de WhatsApp')
+            ->assertSee(route('register'))
+            ->assertSee('/images/clientloop-symbol.png');
         $this->get('/register')->assertOk()->assertSee('Crie sua conta');
         $this->get('/cadastro')->assertRedirect('/register');
     }

@@ -78,9 +78,9 @@
                     @endforelse
                     @if($this->isBusinessDay($day))
                         <div class="pet-calendar__slots" aria-label="Horários livres">
-                            @for ($hour = $this->businessStartsAtHour; $hour < $this->businessEndsAtHour; $hour++)
-                                <a href="{{ $this->createUrl($day, $hour) }}">{{ str_pad((string) $hour, 2, '0', STR_PAD_LEFT) }}:00</a>
-                            @endfor
+                            @foreach ($this->timeSlots as $slot)
+                                <a href="{{ $this->createUrl($day, $slot['hour'], $slot['minute']) }}">{{ $slot['label'] }}</a>
+                            @endforeach
                         </div>
                     @endif
                 </section>
@@ -96,8 +96,12 @@
                         @for ($hour = $this->businessStartsAtHour; $hour <= $this->businessEndsAtHour; $hour++)
                             @php($top = (($hour - $this->businessStartsAtHour) / ($this->businessEndsAtHour - $this->businessStartsAtHour)) * 100)
                             <span class="calendar-hour" style="top:{{ $top }}%">{{ str_pad((string) $hour, 2, '0', STR_PAD_LEFT) }}:00</span>
-                            @if($hour < $this->businessEndsAtHour && $this->isBusinessDay($day))<a class="calendar-slot" style="top:{{ $top }}%" href="{{ $this->createUrl($day, $hour) }}" aria-label="Agendar às {{ $hour }} horas"></a>@endif
                         @endfor
+                        @if($this->isBusinessDay($day))
+                            @foreach ($this->timeSlots as $slot)
+                                <a class="calendar-slot" style="top:{{ $slot['top'] }}%;height:{{ 100 / (($this->businessEndsAtHour - $this->businessStartsAtHour) * 60 / $this->appointmentSlotMinutes) }}%" href="{{ $this->createUrl($day, $slot['hour'], $slot['minute']) }}" aria-label="Agendar às {{ $slot['label'] }}"></a>
+                            @endforeach
+                        @endif
                         @foreach ($events as $appointment)
                             @php($position = $this->position($appointment))
                             <a class="calendar-event calendar-event--{{ $appointment->status }}" style="top:{{ $position['top'] }}%;height:{{ $position['height'] }}%" href="{{ \App\Filament\Resources\Appointments\AppointmentResource::getUrl('edit', ['record' => $appointment]) }}">
