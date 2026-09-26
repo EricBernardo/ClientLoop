@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\Calendar;
 use App\Filament\Resources\ContactTasks\ContactTaskResource;
 use App\Jobs\ProcessCsvImport;
 use App\Models\Appointment;
@@ -207,7 +208,7 @@ class OperationalRulesTest extends TestCase
         $this->actingAs($user);
         Filament::setCurrentPanel(Filament::getPanel('company'));
 
-        Livewire::test(\App\Filament\Pages\Calendar::class)
+        Livewire::test(Calendar::class)
             ->assertSet('mode', 'day');
     }
 

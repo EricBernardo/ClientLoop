@@ -15,6 +15,6 @@ class PhoneNormalizer
             throw new InvalidArgumentException('Informe um telefone brasileiro válido.');
         }
 
-return $digits;
+        return $digits;
     }
 }
