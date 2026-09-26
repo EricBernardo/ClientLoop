@@ -9,6 +9,7 @@ use App\Filament\Resources\Pets\RelationManagers\AppointmentsRelationManager;
 use App\Filament\Resources\Pets\RelationManagers\PackagesRelationManager;
 use App\Models\Pet;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -21,6 +22,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class PetResource extends Resource
 {
@@ -28,7 +30,9 @@ class PetResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedHeart;
 
-    protected static ?int $navigationSort = 2;
+    protected static UnitEnum|string|null $navigationGroup = 'Cadastros';
+
+    protected static ?int $navigationSort = 1;
 
     public static function getNavigationLabel(): string
     {
@@ -68,7 +72,13 @@ class PetResource extends Resource
         ])->recordActions([
             EditAction::make()->color('info')->url(fn (Pet $record): string => self::getUrl('edit', ['record' => $record])),
             DeleteAction::make(),
-        ])->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
+        ])
+            ->emptyStateHeading('Nenhum pet cadastrado')
+            ->emptyStateDescription('Cadastre o pet do responsável para agendar banhos e pacotes.')
+            ->emptyStateActions([
+                Action::make('create')->label('Novo pet')->url(static::getUrl('create')),
+            ])
+            ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
 
     public static function getRelations(): array

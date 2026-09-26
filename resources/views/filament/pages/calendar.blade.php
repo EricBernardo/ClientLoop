@@ -26,8 +26,25 @@
         .calendar-event__name { overflow:hidden; font-size:.76rem; font-weight:800; line-height:1.25; text-overflow:ellipsis; white-space:nowrap; }
         .calendar-event__meta { margin-top:.18rem; overflow:hidden; color:inherit; font-size:.68rem; opacity:.85; text-overflow:ellipsis; white-space:nowrap; }
         .calendar-event__status { font-size:.64rem; font-weight:750; }
-        .dark .pet-calendar__button,.dark .calendar-day__head { border-color:#475467; background:#1f2937; color:#e5e7eb; }.dark .calendar-day__body { border-color:#475467; background:repeating-linear-gradient(to bottom,#111827 0,#111827 calc(10% - 1px),#374151 calc(10% - 1px),#374151 10%); }.dark .calendar-event { background:#134e4a; color:#ccfbf1; border-color:#0f766e; }
-        @media(max-width:700px){.pet-calendar__toolbar{align-items:stretch}.pet-calendar__controls{justify-content:space-between}.pet-calendar__grid{min-width:50rem}.calendar-day__body{height:38rem}}
+        .pet-calendar__mobile { display:none; gap:1rem; }
+        .pet-calendar__day-list { display:grid; gap:.55rem; padding:1rem; border:1px solid #dce8e5; border-radius:.9rem; background:#fff; }
+        .pet-calendar__day-list h3 { margin:0; font-size:.92rem; color:#134e4a; }
+        .pet-calendar__empty { margin:0; color:#667085; font-size:.88rem; }
+        .pet-calendar__item { display:grid; gap:.2rem; padding:.85rem .9rem; border:1px solid #99f6e4; border-radius:.7rem; background:#ecfdf5; color:#134e4a; text-decoration:none; }
+        .pet-calendar__item strong { font-size:.9rem; }
+        .pet-calendar__item span { font-size:.78rem; opacity:.9; }
+        .pet-calendar__slots { display:flex; flex-wrap:wrap; gap:.4rem; }
+        .pet-calendar__slots a { display:inline-flex; min-height:2.1rem; align-items:center; padding:.35rem .65rem; border:1px solid #d0d5dd; border-radius:.5rem; background:#f8fafc; color:#344054; font-size:.78rem; font-weight:700; text-decoration:none; }
+        .pet-calendar__slots a:hover { border-color:#0f766e; color:#0f766e; background:#f0fdfa; }
+        .dark .pet-calendar__button,.dark .calendar-day__head,.dark .pet-calendar__day-list { border-color:#475467; background:#1f2937; color:#e5e7eb; }
+        .dark .calendar-day__body { border-color:#475467; background:repeating-linear-gradient(to bottom,#111827 0,#111827 calc(10% - 1px),#374151 calc(10% - 1px),#374151 10%); }
+        .dark .calendar-event,.dark .pet-calendar__item { background:#134e4a; color:#ccfbf1; border-color:#0f766e; }
+        @media(max-width:700px){
+            .pet-calendar__toolbar{align-items:stretch}
+            .pet-calendar__controls{justify-content:space-between}
+            .pet-calendar__desktop{display:none}
+            .pet-calendar__mobile{display:grid}
+        }
     </style>
 
     @php($start = $this->days[0])
@@ -46,7 +63,31 @@
             </div>
         </div>
 
-        <div class="pet-calendar__scroller"><div class="pet-calendar__grid">
+        <div class="pet-calendar__mobile">
+            @foreach ($this->days as $day)
+                @php($events = $this->appointments->filter(fn ($appointment) => $appointment->scheduled_at->isSameDay($day))->values())
+                <section class="pet-calendar__day-list">
+                    <h3>{{ $day->translatedFormat('l, d/m') }}</h3>
+                    @forelse ($events as $appointment)
+                        <a class="pet-calendar__item" href="{{ \App\Filament\Resources\Appointments\AppointmentResource::getUrl('edit', ['record' => $appointment]) }}">
+                            <strong>{{ $appointment->scheduled_at->format('H:i') }} · {{ $appointment->pet?->name ?? 'Pet não informado' }}</strong>
+                            <span>{{ $appointment->customer->name }} · {{ $appointment->service?->name ?? 'Serviço' }} · {{ \App\Support\InterfaceLabels::appointmentStatus($appointment->status) }}</span>
+                        </a>
+                    @empty
+                        <p class="pet-calendar__empty">Nenhum atendimento neste dia. Escolha um horário livre abaixo.</p>
+                    @endforelse
+                    @if($this->isBusinessDay($day))
+                        <div class="pet-calendar__slots" aria-label="Horários livres">
+                            @for ($hour = $this->businessStartsAtHour; $hour < $this->businessEndsAtHour; $hour++)
+                                <a href="{{ $this->createUrl($day, $hour) }}">{{ str_pad((string) $hour, 2, '0', STR_PAD_LEFT) }}:00</a>
+                            @endfor
+                        </div>
+                    @endif
+                </section>
+            @endforeach
+        </div>
+
+        <div class="pet-calendar__scroller pet-calendar__desktop"><div class="pet-calendar__grid">
             @foreach ($this->days as $day)
                 @php($events = $this->appointments->filter(fn ($appointment) => $appointment->scheduled_at->isSameDay($day)))
                 <section class="calendar-day">

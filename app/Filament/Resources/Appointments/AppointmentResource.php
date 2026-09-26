@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Appointments;
 
 use App\Filament\Forms\Components\HourlyDateTimePicker;
+use App\Filament\Pages\Calendar;
 use App\Filament\Resources\Appointments\Pages\CreateAppointment;
 use App\Filament\Resources\Appointments\Pages\EditAppointment;
 use App\Filament\Resources\Appointments\Pages\ListAppointments;
@@ -34,23 +35,26 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
+use UnitEnum;
 
 class AppointmentResource extends Resource
 {
     protected static ?string $model = Appointment::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
-    protected static ?int $navigationSort = 1;
+    protected static UnitEnum|string|null $navigationGroup = 'Operação';
+
+    protected static ?int $navigationSort = 3;
 
     public static function shouldRegisterNavigation(): bool
     {
-        return false;
+        return true;
     }
 
     public static function getNavigationLabel(): string
     {
-        return 'Agenda';
+        return 'Lista de atendimentos';
     }
 
     public static function getModelLabel(): string
@@ -139,6 +143,12 @@ class AppointmentResource extends Resource
                 }),
                 EditAction::make()->color('info')->url(fn (Appointment $record) => self::getUrl('edit', ['record' => $record])),
                 DeleteAction::make(),
+            ])
+            ->emptyStateHeading('Nenhum agendamento encontrado')
+            ->emptyStateDescription('Use a Agenda para marcar um horário livre ou crie um atendimento aqui.')
+            ->emptyStateActions([
+                Action::make('calendar')->label('Abrir agenda')->url(Calendar::getUrl()),
+                Action::make('create')->label('Novo agendamento')->url(static::getUrl('create')),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

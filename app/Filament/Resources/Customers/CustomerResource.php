@@ -25,14 +25,17 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class CustomerResource extends Resource
 {
     protected static ?string $model = Customer::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
 
-    protected static ?int $navigationSort = 3;
+    protected static UnitEnum|string|null $navigationGroup = 'Cadastros';
+
+    protected static ?int $navigationSort = 2;
 
     public static function getNavigationLabel(): string
     {
@@ -55,7 +58,6 @@ class CustomerResource extends Resource
             ->components([
                 TextInput::make('name')->label('Nome do responsável')->required()->maxLength(255),
                 TextInput::make('phone')->label('Telefone')->required()->helperText('DDD + número; o sistema normaliza para +55.'),
-                HourlyDateTimePicker::make('opted_out_at')->label('Bloqueio de contato')->helperText('Preencha somente após consentimento explícito de não receber contato.'),
                 Textarea::make('notes')->label('Observações')->columnSpanFull(),
             ]);
     }
@@ -74,9 +76,15 @@ class CustomerResource extends Resource
             ])
             ->recordActions([
                 Action::make('ajustarRetorno')->label('Ajustar retorno previsto')->icon('heroicon-o-calendar-days')->fillForm(fn (Customer $record): array => ['next_return_at' => $record->next_return_at])->form([HourlyDateTimePicker::make('next_return_at')->label('Data e horário do retorno')->helperText('Normalmente calculado ao concluir um atendimento. Ajuste somente para uma exceção.')])->action(fn (Customer $record, array $data) => $record->update(['next_return_at' => $data['next_return_at'] ?? null])),
+                Action::make('bloquearContato')->label('Não receber contato')->color('warning')->icon('heroicon-o-no-symbol')->visible(fn (Customer $record) => $record->can_contact)->form([Textarea::make('note')->label('Motivo ou observação')->required()])->requiresConfirmation()->action(fn (Customer $record, array $data) => app(ContactTaskService::class)->optOut($record, $data['note'])),
                 Action::make('novoConsentimento')->label('Registrar novo consentimento')->visible(fn (Customer $record) => ! $record->can_contact)->form([Textarea::make('consent')->label('Como e quando a pessoa autorizou novo contato?')->required()])->action(fn (Customer $record, array $data) => app(ContactTaskService::class)->optIn($record, $data['consent'])),
                 EditAction::make()->url(fn (Customer $record) => self::getUrl('edit', ['record' => $record])),
                 DeleteAction::make(),
+            ])
+            ->emptyStateHeading('Nenhum responsável ainda')
+            ->emptyStateDescription('Cadastre a pessoa que recebe confirmações pelo WhatsApp.')
+            ->emptyStateActions([
+                Action::make('create')->label('Novo responsável')->url(static::getUrl('create')),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -16,7 +16,16 @@ class TemplateRenderer
         $this->validate($body);
         $company = $customer->company;
         $date = $date ?: now();
-        $map = ['cliente' => $customer->name, 'responsavel' => $customer->name, 'pet' => $pet?->name ?? '', 'empresa' => $company->name, 'servico' => $service?->name ?? '', 'data' => $date->format('d/m/Y'), 'horario' => $date->format('H:i'), 'link_agendamento' => ''];
+        $map = [
+            'cliente' => $customer->name,
+            'responsavel' => $customer->name,
+            'pet' => $pet?->name ?? '',
+            'empresa' => $company->name,
+            'servico' => $service?->name ?? '',
+            'data' => $date->format('d/m/Y'),
+            'horario' => $date->format('H:i'),
+            'link_agendamento' => url('/admin/appointments/create?customer_id='.$customer->id),
+        ];
 
         return preg_replace_callback('/\{\{\s*([^}\s]+)\s*\}\}/', fn ($m) => $map[$m[1]], $body);
     }

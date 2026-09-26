@@ -9,12 +9,15 @@ use Carbon\Carbon;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
+use UnitEnum;
 
 class Calendar extends Page
 {
     protected static ?string $navigationLabel = 'Agenda';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;
+
+    protected static UnitEnum|string|null $navigationGroup = 'Operação';
 
     protected static ?int $navigationSort = 1;
 

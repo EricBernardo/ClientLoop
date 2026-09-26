@@ -54,7 +54,7 @@ class MessageTemplateResource extends Resource
         return $schema->components([
             TextInput::make('name')->label('Nome')->required(),
             Select::make('type')->label('Uso')->options(InterfaceLabels::contactTypes())->searchable()->required(),
-            Textarea::make('body')->label('Mensagem')->required()->rows(7)->helperText('Variáveis: {{responsavel}} ou {{cliente}}, {{pet}}, {{empresa}}, {{servico}}, {{data}}, {{horario}}, {{link_agendamento}}.')->columnSpanFull(),
+            Textarea::make('body')->label('Mensagem')->required()->rows(7)->helperText('Variáveis: {{responsavel}} ou {{cliente}}, {{pet}}, {{empresa}}, {{servico}}, {{data}}, {{horario}}, {{link_agendamento}} (abre o agendamento com o responsável).')->columnSpanFull(),
             Toggle::make('active')->label('Ativo')->default(true),
         ]);
     }

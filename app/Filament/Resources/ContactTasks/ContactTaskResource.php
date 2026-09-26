@@ -12,6 +12,7 @@ use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\Resource;
@@ -21,12 +22,16 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
+use UnitEnum;
 
 class ContactTaskResource extends Resource
 {
     protected static ?string $model = ContactTask::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
+
+    protected static UnitEnum|string|null $navigationGroup = 'Operação';
 
     protected static ?int $navigationSort = 2;
 
@@ -79,10 +84,39 @@ class ContactTaskResource extends Resource
                 SelectFilter::make('status')->label('Situação')->options(['pending' => 'Pendente', 'completed' => 'Concluída', 'cancelled' => 'Cancelada'])->searchable(), SelectFilter::make('type')->label('Tipo')->options(InterfaceLabels::contactTypes())->searchable(),
             ])
             ->recordActions([
-                Action::make('whatsapp')->label('Abrir WhatsApp')->color('success')->icon('heroicon-o-chat-bubble-left-right')->url(fn (ContactTask $record) => $record->whatsappUrl())->openUrlInNewTab()->visible(fn (ContactTask $record) => $record->status === 'pending' && $record->whatsappUrl() !== null),
-                Action::make('registrar')->label('Registrar resultado')->color('info')->visible(fn (ContactTask $record) => $record->status === 'pending')->form([Select::make('outcome')->label('Resultado')->options(['confirmed' => 'Confirmou', 'reschedule_requested' => 'Pediu alteração', 'scheduled' => 'Agendou', 'no_response' => 'Sem resposta', 'opt_out' => 'Não receber contato'])->searchable()->required(), Textarea::make('note')->label('Observação')])->action(fn (ContactTask $record, array $data) => app(ContactTaskService::class)->complete($record, $data['outcome'], $data['note'] ?? null)),
+                Action::make('whatsappRegistrar')
+                    ->label('WhatsApp e registrar')
+                    ->color('success')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->visible(fn (ContactTask $record) => $record->status === 'pending' && $record->whatsappUrl() !== null)
+                    ->modalHeading('Contatar no WhatsApp')
+                    ->modalDescription('Abra a conversa, envie a mensagem e registre o resultado nesta mesma tela.')
+                    ->modalSubmitActionLabel('Salvar resultado')
+                    ->form([
+                        Placeholder::make('open_whatsapp')
+                            ->label('1. Enviar mensagem')
+                            ->content(fn (ContactTask $record): HtmlString => new HtmlString(
+                                '<a href="'.e($record->whatsappUrl()).'" target="_blank" rel="noopener" class="fi-link text-sm font-bold text-primary-600 underline dark:text-primary-400">Abrir WhatsApp com a mensagem pronta →</a>'
+                                .'<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Depois volte aqui e escolha o resultado abaixo.</p>'
+                            )),
+                        Select::make('outcome')
+                            ->label('2. Resultado')
+                            ->options([
+                                'confirmed' => 'Confirmou',
+                                'reschedule_requested' => 'Pediu alteração',
+                                'scheduled' => 'Agendou',
+                                'no_response' => 'Sem resposta',
+                                'opt_out' => 'Não receber contato',
+                            ])
+                            ->searchable()
+                            ->required(),
+                        Textarea::make('note')->label('Observação'),
+                    ])
+                    ->action(fn (ContactTask $record, array $data) => app(ContactTaskService::class)->complete($record, $data['outcome'], $data['note'] ?? null)),
                 DeleteAction::make(),
             ])
+            ->emptyStateHeading('Nenhuma tarefa na fila')
+            ->emptyStateDescription('Quando houver confirmações ou retornos pendentes, eles aparecem aqui.')
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),

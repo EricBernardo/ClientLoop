@@ -24,6 +24,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class PetPackageResource extends Resource
 {
@@ -31,7 +32,9 @@ class PetPackageResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTicket;
 
-    protected static ?int $navigationSort = 5;
+    protected static UnitEnum|string|null $navigationGroup = 'Operação';
+
+    protected static ?int $navigationSort = 4;
 
     public static function getNavigationLabel(): string
     {

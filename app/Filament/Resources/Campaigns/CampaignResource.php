@@ -28,6 +28,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
+use UnitEnum;
 
 class CampaignResource extends Resource
 {
@@ -35,7 +36,9 @@ class CampaignResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMegaphone;
 
-    protected static ?int $navigationSort = 7;
+    protected static UnitEnum|string|null $navigationGroup = 'Operação';
+
+    protected static ?int $navigationSort = 5;
 
     public static function getNavigationLabel(): string
     {

@@ -8,6 +8,7 @@ use App\Filament\Resources\Services\Pages\EditService;
 use App\Filament\Resources\Services\Pages\ListServices;
 use App\Models\Service;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -20,14 +21,17 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class ServiceResource extends Resource
 {
     protected static ?string $model = Service::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrenchScrewdriver;
 
-    protected static ?int $navigationSort = 4;
+    protected static UnitEnum|string|null $navigationGroup = 'Cadastros';
+
+    protected static ?int $navigationSort = 3;
 
     public static function getNavigationLabel(): string
     {
@@ -64,6 +68,11 @@ class ServiceResource extends Resource
             ->recordActions([
                 EditAction::make()->url(fn (Service $record) => self::getUrl('edit', ['record' => $record])),
                 DeleteAction::make(),
+            ])
+            ->emptyStateHeading('Nenhum serviço cadastrado')
+            ->emptyStateDescription('Crie Banho, Tosa e outros serviços com duração e preço.')
+            ->emptyStateActions([
+                Action::make('create')->label('Novo serviço')->url(static::getUrl('create')),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -73,7 +73,7 @@ class PackageOfferResource extends Resource
                             Select::make('service_id')->label('Serviço')->relationship('service', 'name')->searchable()->preload()->required(),
                         ])
                         ->orderColumn('position')
-                        ->defaultItems(4)
+                        ->defaultItems(2)
                         ->minItems(1)
                         ->addActionLabel('Adicionar atendimento')
                         ->helperText('Cada item representa uma visita do pacote.')
