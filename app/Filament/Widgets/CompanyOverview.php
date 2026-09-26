@@ -9,6 +9,7 @@ use App\Models\Appointment;
 use App\Models\ContactTask;
 use App\Models\PetPackage;
 use App\Services\PackageService;
+use App\Services\QuotaService;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -27,10 +28,14 @@ class CompanyOverview extends StatsOverviewWidget
         $lowPackages = PetPackage::query()->get()->filter(fn (PetPackage $package): bool => $package->remaining_credits <= 1 && $package->payment_status === 'paid')->count();
         $expiredPackages = PetPackage::query()->whereDate('valid_until', '<', today())->count();
         $nextPackageSteps = PetPackage::query()->where('payment_status', 'paid')->get()->filter(fn (PetPackage $package): bool => app(PackageService::class)->nextItem($package) !== null)->count();
+        $usage = app(QuotaService::class)->usage($company);
 
         return [
             Stat::make('Agenda de hoje', $todayAppointments)->description('Ver os atendimentos de hoje')->url(Calendar::getUrl(['date' => today()->toDateString(), 'mode' => 'day']))->color($todayAppointments ? 'primary' : 'success'),
             Stat::make('Tarefas pendentes', $pendingTasks)->description('Abrir contatos que precisam de ação')->url(ContactTaskResource::getUrl('index', ['view' => 'pending']))->color($pendingTasks ? 'warning' : 'success'),
+            Stat::make('Uso do plano', $usage['contacts'].'/'.$usage['contact_limit'].' · '.$usage['tasks'].'/'.$usage['task_limit'])
+                ->description('Responsáveis e tarefas no mês')
+                ->color($usage['remaining_tasks'] === 0 || $usage['contacts'] >= $usage['contact_limit'] ? 'danger' : 'success'),
             Stat::make('Pacotes com pouco saldo', $lowPackages)->description('Ver pacotes com até um crédito')->url(PetPackageResource::getUrl('index', ['view' => 'low']))->color($lowPackages ? 'warning' : 'success'),
             Stat::make('Próximas etapas de pacote', $nextPackageSteps)->description('Ver pacotes que ainda têm atendimento')->url(PetPackageResource::getUrl('index'))->color($nextPackageSteps ? 'primary' : 'success'),
             Stat::make('Pacotes vencidos', $expiredPackages)->description('Ver pacotes fora da validade')->url(PetPackageResource::getUrl('index', ['view' => 'expired']))->color($expiredPackages ? 'danger' : 'success'),

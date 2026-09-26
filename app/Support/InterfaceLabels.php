@@ -40,7 +40,6 @@ final class InterfaceLabels
 
     /** @var array<string, string> */
     private const PRIORITIES = [
-        'low' => 'Baixa',
         'normal' => 'Normal',
         'high' => 'Alta',
     ];
@@ -140,7 +139,6 @@ final class InterfaceLabels
     {
         return match ($value) {
             'high' => 'danger',
-            'low' => 'success',
             default => 'gray',
         };
     }

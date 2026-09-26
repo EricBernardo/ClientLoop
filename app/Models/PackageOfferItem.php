@@ -29,14 +29,9 @@ class PackageOfferItem extends TenantModel
 
     private function refreshOfferSummary(): void
     {
-        $first = static::withoutGlobalScopes()
-            ->where('package_offer_id', $this->package_offer_id)
-            ->orderBy('position')
-            ->first(['service_id']);
         $count = static::withoutGlobalScopes()->where('package_offer_id', $this->package_offer_id)->count();
 
         DB::table('package_offers')->where('id', $this->package_offer_id)->update([
-            'service_id' => $first?->service_id,
             'credits' => $count,
             'updated_at' => now(),
         ]);

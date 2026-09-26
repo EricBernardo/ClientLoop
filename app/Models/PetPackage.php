@@ -9,7 +9,7 @@ use Illuminate\Validation\ValidationException;
 
 class PetPackage extends TenantModel
 {
-    protected $fillable = ['company_id', 'pet_id', 'package_offer_id', 'service_id', 'name', 'total_credits', 'price', 'payment_status', 'purchased_at', 'valid_until'];
+    protected $fillable = ['company_id', 'pet_id', 'package_offer_id', 'name', 'total_credits', 'price', 'payment_status', 'purchased_at', 'valid_until'];
 
     protected $appends = ['remaining_credits'];
 
@@ -26,11 +26,6 @@ class PetPackage extends TenantModel
     public function offer(): BelongsTo
     {
         return $this->belongsTo(PackageOffer::class, 'package_offer_id');
-    }
-
-    public function service(): BelongsTo
-    {
-        return $this->belongsTo(Service::class);
     }
 
     public function redemptions(): HasMany
@@ -70,11 +65,10 @@ class PetPackage extends TenantModel
                 return;
             }
 
-            $offer = PackageOffer::withoutGlobalScopes()->with('service')->find($package->package_offer_id);
+            $offer = PackageOffer::withoutGlobalScopes()->find($package->package_offer_id);
             if (! $offer || $offer->company_id !== $package->company_id) {
                 throw ValidationException::withMessages(['package_offer_id' => 'Escolha um modelo de pacote disponível para a sua empresa.']);
             }
-            $package->service_id ??= $offer->service_id;
             $package->name ??= $offer->name;
             $package->total_credits ??= $offer->credits;
             $package->price ??= $offer->suggested_price;
@@ -85,25 +79,11 @@ class PetPackage extends TenantModel
                 return;
             }
 
-            $offer = PackageOffer::withoutGlobalScopes()->with('service')->find($package->package_offer_id);
-            if (! $offer) {
-                return;
-            }
-
             $offerItems = PackageOfferItem::withoutGlobalScopes()
                 ->where('package_offer_id', $package->package_offer_id)
                 ->with('service')
                 ->orderBy('position')
                 ->get();
-
-            if ($offerItems->isEmpty() && $offer->service) {
-                $offerItems = collect(range(1, $offer->credits))->map(function (int $position) use ($offer): PackageOfferItem {
-                    $item = new PackageOfferItem(['company_id' => $offer->company_id, 'package_offer_id' => $offer->id, 'service_id' => $offer->service_id, 'position' => $position]);
-                    $item->setRelation('service', $offer->service);
-
-                    return $item;
-                });
-            }
 
             foreach ($offerItems as $item) {
                 $package->items()->create([

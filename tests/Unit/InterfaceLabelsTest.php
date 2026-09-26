@@ -18,5 +18,7 @@ class InterfaceLabelsTest extends TestCase
         $this->assertNotSame('Perdido', InterfaceLabels::taskOutcome('lost'));
         $this->assertSame('Rascunho', InterfaceLabels::campaignStatus('draft'));
         $this->assertSame('Ativa', InterfaceLabels::campaignStatus('active'));
+        $this->assertSame(['normal' => 'Normal', 'high' => 'Alta'], InterfaceLabels::priorities());
+        $this->assertArrayNotHasKey('low', InterfaceLabels::priorities());
     }
 }

@@ -17,4 +17,9 @@ class CampaignRecipient extends TenantModel
     {
         return $this->belongsTo(Campaign::class);
     }
+
+    public function contactTask(): BelongsTo
+    {
+        return $this->belongsTo(ContactTask::class);
+    }
 }

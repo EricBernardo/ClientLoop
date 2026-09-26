@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\ContactTasks;
 
-use App\Filament\Forms\Components\HourlyDateTimePicker;
 use App\Filament\Resources\ContactTasks\Pages\ListContactTasks;
 use App\Models\ContactTask;
 use App\Services\ContactTaskService;
@@ -57,10 +56,7 @@ class ContactTaskResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                Select::make('customer_id')->label('Responsável')->relationship('customer', 'name')->searchable()->preload()->required(), Select::make('type')->label('Tipo')->options(InterfaceLabels::contactTypes())->searchable()->required(), Select::make('priority')->label('Prioridade')->options(InterfaceLabels::priorities())->searchable()->default('normal'), HourlyDateTimePicker::make('due_at')->label('Vencimento')->required(), Textarea::make('rendered_message')->label('Mensagem preparada')->columnSpanFull(),
-            ]);
+        return $schema->components([]);
     }
 
     public static function table(Table $table): Table
