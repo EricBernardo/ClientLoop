@@ -15,8 +15,8 @@ Route::post('/register', [RegistrationController::class, 'store'])->name('regist
 Route::redirect('/cadastro', '/register');
 Route::redirect('/app', '/admin');
 Route::redirect('/super', '/platform');
-Route::get('/admin/imports/template/{type}', ImportTemplateController::class)->middleware(['auth', 'verified'])->name('imports.template');
-Route::get('/admin/importacoes/modelo/{type}', fn (string $type) => redirect()->route('imports.template', ['type' => $type]))->middleware(['auth', 'verified']);
+Route::get('/admin/imports/template/{type}', ImportTemplateController::class)->middleware(['auth', 'verified.when_required'])->name('imports.template');
+Route::get('/admin/importacoes/modelo/{type}', fn (string $type) => redirect()->route('imports.template', ['type' => $type]))->middleware(['auth', 'verified.when_required']);
 Route::get('/verify-email', fn () => view('auth.verify'))->middleware('auth')->name('verification.notice');
 Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
     $request->fulfill();

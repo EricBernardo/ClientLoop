@@ -8,7 +8,6 @@ use App\Models\Company;
 use App\Models\CompanySubscription;
 use App\Models\ContactTask;
 use App\Models\Customer;
-use App\Models\MessageTemplate;
 use App\Models\PackageOffer;
 use App\Models\PackageRedemption;
 use App\Models\Pet;
@@ -16,6 +15,7 @@ use App\Models\PetPackage;
 use App\Models\Plan;
 use App\Models\Service;
 use App\Models\User;
+use App\Services\DefaultMessageTemplateService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -127,11 +127,7 @@ class DemoClinicSeeder extends Seeder
             return [$data['key'] => $appointment];
         });
 
-        $templates = collect([
-            ['name' => 'Confirmação de banho', 'type' => 'confirmation', 'body' => 'Olá, {{responsavel}}! O banho de {{pet}} está marcado para {{data}} às {{horario}}. Podemos confirmar?'],
-            ['name' => 'Hora de voltar', 'type' => 'recall', 'body' => 'Olá, {{responsavel}}! Sentimos falta de {{pet}} na {{empresa}}. Quer agendar um banho?'],
-            ['name' => 'Reativação', 'type' => 'reactivation', 'body' => 'Olá, {{responsavel}}! Faz um tempo que não vemos {{pet}}. Quer reservar um horário?'],
-        ])->mapWithKeys(fn (array $data) => [$data['name'] => MessageTemplate::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'name' => $data['name']], [...$data, 'company_id' => $company->id, 'active' => true])]);
+        $templates = app(DefaultMessageTemplateService::class)->provision($company);
 
         $campaign = Campaign::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'name' => 'Pets para reativar'], ['type' => 'reactivation', 'status' => 'draft', 'message_template_id' => $templates['Reativação']->id, 'filters' => []]);
         ContactTask::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'appointment_id' => $appointments['thor-agendado']->id, 'type' => 'confirmation'], ['customer_id' => $responsibles['Ana Beatriz Lima']->id, 'message_template_id' => $templates['Confirmação de banho']->id, 'priority' => 'high', 'due_at' => now(), 'rendered_message' => 'Olá, Ana Beatriz Lima! O banho de Thor está marcado para '.$nextBusinessDay->format('d/m').' às 09:00. Podemos confirmar?', 'status' => 'pending']);

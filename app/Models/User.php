@@ -36,8 +36,10 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
             return $this->is_super_admin;
         }
 
+        $emailVerified = ! config('clientloop.require_email_verification') || $this->hasVerifiedEmail();
+
         return ! $this->is_super_admin
-            && $this->hasVerifiedEmail()
+            && $emailVerified
             && $this->company
             && in_array($this->company->status, ['trial', 'active'], true);
     }

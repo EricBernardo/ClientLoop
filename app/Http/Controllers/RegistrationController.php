@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\CompanySubscription;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\DefaultMessageTemplateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,22 +19,36 @@ class RegistrationController extends Controller
         return view('auth.register');
     }
 
-    public function store(Request $request)
+    public function store(Request $request, DefaultMessageTemplateService $messageTemplates)
     {
         $data = $request->validate(['company_name' => ['required', 'string', 'max:120'], 'name' => ['required', 'string', 'max:120'], 'email' => ['required', 'email', 'max:255', 'unique:users,email'], 'password' => ['required', 'confirmed', 'min:12']]);
-        $user = DB::transaction(function () use ($data) {
+        $requireVerification = (bool) config('clientloop.require_email_verification');
+
+        $user = DB::transaction(function () use ($data, $requireVerification, $messageTemplates) {
             $company = Company::create(['name' => $data['company_name'], 'slug' => Str::slug($data['company_name']).'-'.Str::lower(Str::random(6))]);
             $plan = Plan::where('is_default', true)->first() ?? Plan::firstOrCreate(
                 ['name' => 'Teste gratuito'],
                 ['contact_limit' => 500, 'task_limit' => 1000, 'is_default' => true],
             );
             CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'trial', 'starts_at' => now()]);
+            $messageTemplates->provision($company);
 
-            return User::create(['company_id' => $company->id, 'name' => $data['name'], 'email' => $data['email'], 'password' => $data['password']]);
+            return User::create([
+                'company_id' => $company->id,
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => $data['password'],
+                'email_verified_at' => $requireVerification ? null : now(),
+            ]);
         });
         Auth::login($user);
-        $user->sendEmailVerificationNotification();
 
-        return redirect()->route('verification.notice');
+        if ($requireVerification) {
+            $user->sendEmailVerificationNotification();
+
+            return redirect()->route('verification.notice');
+        }
+
+        return redirect('/admin');
     }
 }
