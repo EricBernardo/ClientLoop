@@ -86,7 +86,10 @@ class PetShopFlowTest extends TestCase
         [$company, $user] = $this->company();
         $this->actingAs($user);
         [$customer, $pet, $service] = $this->petData($company);
-        $offer = PackageOffer::withoutGlobalScopes()->create(['company_id' => $company->id, 'service_id' => $service->id, 'name' => '4 banhos', 'credits' => 4, 'suggested_price' => 160, 'active' => true]);
+        $offer = PackageOffer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => '4 banhos', 'credits' => 4, 'suggested_price' => 160, 'active' => true]);
+        foreach (range(1, 4) as $position) {
+            PackageOfferItem::withoutGlobalScopes()->create(['company_id' => $company->id, 'package_offer_id' => $offer->id, 'service_id' => $service->id, 'position' => $position]);
+        }
         $package = PetPackage::withoutGlobalScopes()->create(['company_id' => $company->id, 'pet_id' => $pet->id, 'package_offer_id' => $offer->id, 'payment_status' => 'paid', 'purchased_at' => today()]);
         $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'pet_id' => $pet->id, 'service_id' => $service->id, 'pet_package_id' => $package->id, 'scheduled_at' => now()->next('monday')->setTime(10, 0), 'status' => 'confirmed']);
 
@@ -133,7 +136,10 @@ class PetShopFlowTest extends TestCase
         [$customer, $pet, $service] = $this->petData($company);
         $service->update(['return_interval_months' => 1]);
         $customer->update(['next_return_at' => now()->subDay()]);
-        $offer = PackageOffer::withoutGlobalScopes()->create(['company_id' => $company->id, 'service_id' => $service->id, 'name' => '2 banhos', 'credits' => 2]);
+        $offer = PackageOffer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => '2 banhos', 'credits' => 2]);
+        foreach (range(1, 2) as $position) {
+            PackageOfferItem::withoutGlobalScopes()->create(['company_id' => $company->id, 'package_offer_id' => $offer->id, 'service_id' => $service->id, 'position' => $position]);
+        }
         $package = PetPackage::withoutGlobalScopes()->create(['company_id' => $company->id, 'pet_id' => $pet->id, 'package_offer_id' => $offer->id, 'payment_status' => 'paid', 'purchased_at' => today()]);
         $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'pet_id' => $pet->id, 'service_id' => $service->id, 'pet_package_id' => $package->id, 'scheduled_at' => now()->addDays(2)->setTime(10, 0), 'status' => 'confirmed']);
 
@@ -147,7 +153,10 @@ class PetShopFlowTest extends TestCase
         [$company, $user] = $this->company();
         $this->actingAs($user);
         [$customer, $pet, $service] = $this->petData($company);
-        $offer = PackageOffer::withoutGlobalScopes()->create(['company_id' => $company->id, 'service_id' => $service->id, 'name' => '2 banhos', 'credits' => 2]);
+        $offer = PackageOffer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => '2 banhos', 'credits' => 2]);
+        foreach (range(1, 2) as $position) {
+            PackageOfferItem::withoutGlobalScopes()->create(['company_id' => $company->id, 'package_offer_id' => $offer->id, 'service_id' => $service->id, 'position' => $position]);
+        }
         $package = PetPackage::withoutGlobalScopes()->create(['company_id' => $company->id, 'pet_id' => $pet->id, 'package_offer_id' => $offer->id, 'payment_status' => 'pending', 'purchased_at' => today()]);
 
         $this->expectException(ValidationException::class);
@@ -268,7 +277,12 @@ class PetShopFlowTest extends TestCase
 
         $this->assertSame(0, Pet::query()->count());
         $this->get('/admin/calendar')->assertOk()->assertSee('Novo agendamento');
-        $this->get('/admin/business-settings')->assertOk()->assertSee('Horários de atendimento');
+        $this->get('/admin/business-settings')
+            ->assertOk()
+            ->assertSee('Horários de atendimento')
+            ->assertSee('Regras de contato')
+            ->assertSee('Fuso horário')
+            ->assertSee('Intervalo da agenda');
         $this->get('/admin/pets')->assertOk()->assertSee('Pets');
         $this->get('/admin/pet-packages')->assertOk()->assertSee('Pacotes');
     }

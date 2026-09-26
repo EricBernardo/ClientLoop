@@ -66,17 +66,27 @@ class CustomerResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')->label('Responsável')->searchable()->sortable(), TextColumn::make('phone')->label('Telefone')->searchable(),
+                TextColumn::make('name')->label('Responsável')->searchable()->sortable(),
+                TextColumn::make('phone')->label('Telefone')->searchable(),
                 TextColumn::make('pets.name')->label('Pets')->badge()->separator(',')->limitList(3),
+                TextColumn::make('last_activity_at')->dateTime('d/m/Y')->placeholder('Ainda não registrado')->label('Último atendimento')->sortable(),
                 TextColumn::make('next_return_at')->dateTime('d/m/Y')->placeholder('Ainda não calculado')->label('Retorno previsto')->sortable(),
-                IconColumn::make('opted_out_at')->boolean()->label('Bloqueado'),
+                IconColumn::make('opted_out_at')
+                    ->boolean()
+                    ->label('Bloqueado')
+                    ->tooltip(fn (Customer $record): ?string => $record->opted_out_at ? ($record->opt_out_note ?: 'Contato bloqueado') : null),
+                TextColumn::make('opt_out_note')
+                    ->label('Motivo do bloqueio')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->formatStateUsing(fn (?string $state, Customer $record): ?string => $record->opted_out_at ? $state : null),
             ])
             ->filters([
                 TernaryFilter::make('opted_out_at')->label('Contato bloqueado'),
             ])
             ->recordActions([
                 Action::make('ajustarRetorno')->label('Ajustar retorno previsto')->icon('heroicon-o-calendar-days')->fillForm(fn (Customer $record): array => ['next_return_at' => $record->next_return_at])->form([HourlyDateTimePicker::make('next_return_at')->label('Data e horário do retorno')->helperText('Normalmente calculado ao concluir um atendimento. Ajuste somente para uma exceção.')])->action(fn (Customer $record, array $data) => $record->update(['next_return_at' => $data['next_return_at'] ?? null])),
-                Action::make('bloquearContato')->label('Não receber contato')->color('warning')->icon('heroicon-o-no-symbol')->visible(fn (Customer $record) => $record->can_contact)->form([Textarea::make('note')->label('Motivo ou observação')->required()])->requiresConfirmation()->action(fn (Customer $record, array $data) => app(ContactTaskService::class)->optOut($record, $data['note'])),
+                Action::make('bloquearContato')->label('Bloquear contato')->color('warning')->icon('heroicon-o-no-symbol')->visible(fn (Customer $record) => $record->can_contact)->form([Textarea::make('note')->label('Motivo ou observação')->required()])->requiresConfirmation()->action(fn (Customer $record, array $data) => app(ContactTaskService::class)->optOut($record, $data['note'])),
                 Action::make('novoConsentimento')->label('Registrar novo consentimento')->visible(fn (Customer $record) => ! $record->can_contact)->form([Textarea::make('consent')->label('Como e quando a pessoa autorizou novo contato?')->required()])->action(fn (Customer $record, array $data) => app(ContactTaskService::class)->optIn($record, $data['consent'])),
                 EditAction::make()->url(fn (Customer $record) => self::getUrl('edit', ['record' => $record])),
                 DeleteAction::make(),

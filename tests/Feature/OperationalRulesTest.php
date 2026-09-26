@@ -120,7 +120,7 @@ class OperationalRulesTest extends TestCase
             'errors' => [2 => 'Informe um telefone brasileiro válido.'],
         ]);
 
-        $this->get('/admin/imports')->assertOk()->assertSee('Ver erros')->assertSee('Linha 2:')->assertSee('Informe um telefone brasileiro válido.');
+        $this->get('/admin/imports')->assertOk()->assertSee('Ver erros')->assertSee('Linha 2:')->assertSee('Informe um telefone brasileiro válido.')->assertSee('Responsáveis e pets');
     }
 
     public function test_missing_import_file_is_explained_without_exposing_a_technical_exception(): void

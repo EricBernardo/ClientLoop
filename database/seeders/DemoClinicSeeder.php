@@ -69,7 +69,6 @@ class DemoClinicSeeder extends Seeder
         ];
         $offers = collect($offerDefinitions)->mapWithKeys(function (array $data) use ($company, $services): array {
             $offer = PackageOffer::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'name' => $data['name']], [
-                'service_id' => $services[$data['sequence'][0]]->id,
                 'credits' => count($data['sequence']),
                 'suggested_price' => $data['suggested_price'],
                 'active' => true,
@@ -99,7 +98,7 @@ class DemoClinicSeeder extends Seeder
         foreach (['thor' => '4 banhos', 'mel' => '4 tosas', 'amora' => '4 banhos'] as $packageKey => $offerName) {
             $package = $packages[$packageKey];
             $offer = $offers[$offerName];
-            $package->update(['name' => $offer->name, 'service_id' => $offer->service_id, 'total_credits' => $offer->credits]);
+            $package->update(['name' => $offer->name, 'total_credits' => $offer->credits]);
             $package->items()->delete();
             foreach ($offer->items()->with('service')->orderBy('position')->get() as $item) {
                 $package->items()->create(['company_id' => $company->id, 'service_id' => $item->service_id, 'service_name' => $item->service->name, 'duration_minutes' => $item->service->duration_minutes, 'position' => $item->position]);
@@ -134,7 +133,7 @@ class DemoClinicSeeder extends Seeder
             ['name' => 'Reativação', 'type' => 'reactivation', 'body' => 'Olá, {{responsavel}}! Faz um tempo que não vemos {{pet}}. Quer reservar um horário?'],
         ])->mapWithKeys(fn (array $data) => [$data['name'] => MessageTemplate::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'name' => $data['name']], [...$data, 'company_id' => $company->id, 'active' => true])]);
 
-        $campaign = Campaign::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'name' => 'Pets para reativar'], ['type' => 'reactivation', 'status' => 'draft', 'message_template_id' => $templates['Reativação']->id, 'filters' => ['months_inactive' => 6]]);
+        $campaign = Campaign::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'name' => 'Pets para reativar'], ['type' => 'reactivation', 'status' => 'draft', 'message_template_id' => $templates['Reativação']->id, 'filters' => []]);
         ContactTask::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'appointment_id' => $appointments['thor-agendado']->id, 'type' => 'confirmation'], ['customer_id' => $responsibles['Ana Beatriz Lima']->id, 'message_template_id' => $templates['Confirmação de banho']->id, 'priority' => 'high', 'due_at' => now(), 'rendered_message' => 'Olá, Ana Beatriz Lima! O banho de Thor está marcado para '.$nextBusinessDay->format('d/m').' às 09:00. Podemos confirmar?', 'status' => 'pending']);
         ContactTask::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'appointment_id' => $appointments['amora-agendado']->id, 'type' => 'confirmation'], ['customer_id' => $responsibles['Mariana Oliveira']->id, 'message_template_id' => $templates['Confirmação de banho']->id, 'priority' => 'normal', 'due_at' => now()->addHour(), 'rendered_message' => 'Olá, Mariana Oliveira! O banho de Amora está marcado para '.$nextBusinessDay->format('d/m').' às 14:00. Podemos confirmar?', 'status' => 'pending']);
         ContactTask::withoutGlobalScopes()->updateOrCreate(['company_id' => $company->id, 'customer_id' => $responsibles['João Pedro Martins']->id, 'type' => 'reactivation'], ['campaign_id' => $campaign->id, 'message_template_id' => $templates['Reativação']->id, 'priority' => 'normal', 'due_at' => now()->subHour(), 'rendered_message' => 'Olá, João Pedro Martins! Faz um tempo que não vemos Bob. Quer reservar um horário?', 'status' => 'pending']);
@@ -169,7 +168,6 @@ class DemoClinicSeeder extends Seeder
     {
         return [
             'name' => $offer->name,
-            'service_id' => $offer->service_id,
             'total_credits' => $offer->credits,
             'price' => $offer->suggested_price,
             'payment_status' => $paymentStatus,

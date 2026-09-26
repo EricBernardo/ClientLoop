@@ -66,7 +66,7 @@
                     @forelse ($this->runs as $run)
                         @php($status = ['queued' => 'Na fila', 'processing' => 'Processando', 'completed' => 'Concluída', 'failed' => 'Falhou'][$run->status] ?? $run->status)
                         @php($errors = $run->displayErrors())
-                        <tr><td>{{ $run->type === 'customers' ? 'Responsáveis e pets' : ucfirst((string) $run->type) }}</td><td><span class="status status--{{ $run->status }}">{{ $status }}</span></td><td>{{ $run->created_count }}</td><td>{{ $run->updated_count }}</td><td>{{ count($errors) }}</td><td>@if (count($errors))<details class="import-errors"><summary>Ver erros</summary><ul>@foreach ($errors as $line => $message)<li><strong>{{ is_numeric($line) ? 'Linha '.$line : 'Arquivo' }}:</strong> {{ $message }}</li>@endforeach</ul></details>@else<span class="text-gray-500">Sem erros</span>@endif</td></tr>
+                        <tr><td>Responsáveis e pets</td><td><span class="status status--{{ $run->status }}">{{ $status }}</span></td><td>{{ $run->created_count }}</td><td>{{ $run->updated_count }}</td><td>{{ count($errors) }}</td><td>@if (count($errors))<details class="import-errors"><summary>Ver erros</summary><ul>@foreach ($errors as $line => $message)<li><strong>{{ is_numeric($line) ? 'Linha '.$line : 'Arquivo' }}:</strong> {{ $message }}</li>@endforeach</ul></details>@else<span class="text-gray-500">Sem erros</span>@endif</td></tr>
                     @empty
                         <tr><td colspan="6" class="empty-history">Nenhuma importação realizada ainda.</td></tr>
                     @endforelse
