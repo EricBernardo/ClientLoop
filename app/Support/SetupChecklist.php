@@ -6,11 +6,13 @@ use App\Filament\Pages\BusinessSettings;
 use App\Filament\Pages\HowToUse;
 use App\Filament\Resources\Customers\CustomerResource;
 use App\Filament\Resources\MessageTemplates\MessageTemplateResource;
+use App\Filament\Resources\PackageOffers\PackageOfferResource;
 use App\Filament\Resources\Pets\PetResource;
 use App\Filament\Resources\Services\ServiceResource;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\MessageTemplate;
+use App\Models\PackageOffer;
 use App\Models\Pet;
 use App\Models\Service;
 
@@ -25,6 +27,7 @@ class SetupChecklist
         $hasCustomers = Customer::query()->where('company_id', $company->id)->exists();
         $hasPets = Pet::query()->where('company_id', $company->id)->exists();
         $hasTemplates = MessageTemplate::query()->where('company_id', $company->id)->where('active', true)->exists();
+        $hasPackageOffers = PackageOffer::query()->where('company_id', $company->id)->exists();
 
         return [
             [
@@ -58,6 +61,12 @@ class SetupChecklist
                 'url' => MessageTemplateResource::getUrl('index'),
             ],
             [
+                'key' => 'packages',
+                'label' => 'Criar um modelo de pacote',
+                'done' => $hasPackageOffers,
+                'url' => PackageOfferResource::getUrl('index'),
+            ],
+            [
                 'key' => 'guide',
                 'label' => 'Ver o guia completo',
                 'done' => $company->guide_viewed_at !== null,
@@ -80,6 +89,12 @@ class SetupChecklist
             return false;
         }
 
-        return ! self::coreComplete($company);
+        foreach (self::steps($company) as $step) {
+            if (! $step['done']) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

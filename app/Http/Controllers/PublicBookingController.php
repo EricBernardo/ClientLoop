@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Pet;
 use App\Models\Service;
+use App\Services\AppointmentService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -51,7 +52,7 @@ class PublicBookingController extends Controller
         );
 
         try {
-            Appointment::withoutGlobalScopes()->create([
+            $appointment = Appointment::withoutGlobalScopes()->create([
                 'company_id' => $company->id,
                 'customer_id' => $customer->id,
                 'pet_id' => $pet->id,
@@ -61,6 +62,7 @@ class PublicBookingController extends Controller
                 'status' => 'scheduled',
                 'confirmation_token' => Str::random(40),
             ]);
+            app(AppointmentService::class)->queueFirstVisitConfirmation($appointment);
         } catch (ValidationException $exception) {
             return back()->withInput()->withErrors($exception->errors());
         }

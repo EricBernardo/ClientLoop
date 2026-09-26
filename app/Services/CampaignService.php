@@ -9,7 +9,11 @@ use Illuminate\Validation\ValidationException;
 
 class CampaignService
 {
-    public function __construct(private ContactTaskService $tasks, private QuotaService $quota) {}
+    public function __construct(
+        private ContactTaskService $tasks,
+        private QuotaService $quota,
+        private StaffNotifier $notifier,
+    ) {}
 
     public function launch(Campaign $campaign): int
     {
@@ -42,6 +46,7 @@ class CampaignService
         }
 
         $campaign->update(['status' => 'active', 'starts_at' => $campaign->starts_at ?? now()]);
+        $this->notifier->campaignLaunched($campaign, $created);
 
         return $created;
     }

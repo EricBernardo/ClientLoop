@@ -17,7 +17,7 @@ Contas do seed:
 | Atendente | `/admin` | `atendente@clientloop.test` | `clientloop123` |
 | Superadmin | `/platform` | `admin@clientloop.test` | `clientloop123` |
 
-Link público da demo: `/agendar/patinhas-demo-booking`.
+Link público da demo: `/book/patinhas-demo-booking` (empresa com ~18 meses de histórico no seed).
 
 O painel da empresa fica em `/admin` e o painel reservado a superadmins fica em `/platform`. Também é possível promover um usuário em **Empresas** no `/platform`.
 

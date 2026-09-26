@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Services\AppointmentService;
+use App\Services\StaffNotifier;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -19,23 +20,25 @@ class AppointmentConfirmationController extends Controller
         return view('booking.confirm', ['appointment' => $appointment]);
     }
 
-    public function confirm(string $token)
+    public function confirm(string $token, StaffNotifier $notifier)
     {
         $appointment = Appointment::withoutGlobalScopes()->where('confirmation_token', $token)->firstOrFail();
 
         if (in_array($appointment->status, ['scheduled', 'reschedule_requested'], true)) {
             $appointment->update(['status' => 'confirmed']);
+            $notifier->appointmentConfirmed($appointment);
         }
 
         return redirect()->route('appointment.confirm.show', $token)->with('status', 'Presença confirmada. Obrigado!');
     }
 
-    public function cancel(Request $request, string $token, AppointmentService $appointments)
+    public function cancel(Request $request, string $token, AppointmentService $appointments, StaffNotifier $notifier)
     {
         $appointment = Appointment::withoutGlobalScopes()->where('confirmation_token', $token)->firstOrFail();
 
         if (in_array($appointment->status, ['scheduled', 'confirmed', 'reschedule_requested'], true)) {
             $appointments->cancel($appointment);
+            $notifier->appointmentCancelled($appointment->fresh());
         }
 
         return redirect()->route('appointment.confirm.show', $token)->with('status', 'Horário cancelado.');

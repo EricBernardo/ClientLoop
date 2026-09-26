@@ -3,7 +3,7 @@
         <div class="flex flex-col gap-4">
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h2 class="text-base font-bold tracking-tight text-gray-950 dark:text-white">Configure sua pet shop</h2>
+                    <h2 class="text-base font-bold tracking-tight text-gray-950 dark:text-white">{{ $this->coreComplete ? 'Próximos passos' : 'Configure sua pet shop' }}</h2>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Faça estes passos uma vez. Depois a rotina diária fica na Agenda e na Fila de contatos.</p>
                 </div>
                 <x-filament::button color="gray" size="sm" wire:click="dismiss" wire:confirm="Ocultar o checklist? Você ainda pode abrir Como usar.">

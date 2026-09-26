@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Appointments\Pages;
 
 use App\Filament\Concerns\HandlesFriendlyValidation;
+use App\Filament\Concerns\RedirectsFirstVisit;
 use App\Filament\Resources\Appointments\AppointmentResource;
 use App\Models\Appointment;
 use App\Services\AppointmentService;
@@ -14,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 class CreateAppointment extends CreateRecord
 {
     use HandlesFriendlyValidation;
+    use RedirectsFirstVisit;
 
     protected static string $resource = AppointmentResource::class;
 
@@ -41,7 +43,11 @@ class CreateAppointment extends CreateRecord
             return $created[0];
         }
 
-        return parent::handleRecordCreation($data);
+        /** @var Appointment $record */
+        $record = parent::handleRecordCreation($data);
+        app(AppointmentService::class)->queueFirstVisitConfirmation($record);
+
+        return $record;
     }
 
     public function create(bool $another = false): void

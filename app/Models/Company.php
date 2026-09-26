@@ -22,6 +22,7 @@ class Company extends Model
         'appointment_slot_minutes',
         'business_breaks',
         'onboarding_completed_at',
+        'setup_wizard_completed_at',
         'hours_configured_at',
         'guide_viewed_at',
         'public_booking_token',
@@ -33,6 +34,7 @@ class Company extends Model
             'business_days' => 'array',
             'business_breaks' => 'array',
             'onboarding_completed_at' => 'datetime',
+            'setup_wizard_completed_at' => 'datetime',
             'hours_configured_at' => 'datetime',
             'guide_viewed_at' => 'datetime',
         ];
@@ -68,7 +70,7 @@ class Company extends Model
             $this->forceFill(['public_booking_token' => Str::random(40)])->saveQuietly();
         }
 
-        $url = url('/agendar/'.$this->public_booking_token);
+        $url = route('booking.show', $this->public_booking_token);
 
         return $customerId ? $url.'?customer_id='.$customerId : $url;
     }

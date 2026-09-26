@@ -111,10 +111,11 @@ class CamadaDoisTresTest extends TestCase
 
         $this->assertTrue(SetupChecklist::shouldShow($company->fresh()));
         $company->update(['hours_configured_at' => now()]);
-        $this->assertFalse(SetupChecklist::shouldShow($company->fresh()));
+        $this->assertTrue(SetupChecklist::shouldShow($company->fresh()));
 
         $steps = SetupChecklist::steps($company->fresh());
         $this->assertFalse(collect($steps)->firstWhere('key', 'guide')['done']);
+        $this->assertFalse(collect($steps)->firstWhere('key', 'packages')['done']);
         $company->update(['guide_viewed_at' => now()]);
         $this->assertTrue(collect(SetupChecklist::steps($company->fresh()))->firstWhere('key', 'guide')['done']);
     }
@@ -199,14 +200,14 @@ class CamadaDoisTresTest extends TestCase
 
         $rendered = app(TemplateRenderer::class)->render('Agende: {{link_agendamento}}', $customer, null, null, null, $company);
 
-        $this->assertStringContainsString('/agendar/token-publico', $rendered);
+        $this->assertStringContainsString('/book/token-publico', $rendered);
     }
 
     /** @return array{Company, User} */
     private function company(): array
     {
         $plan = Plan::create(['name' => 'Trial', 'contact_limit' => 100, 'task_limit' => 100, 'is_default' => true]);
-        $company = Company::create(['name' => 'Loja '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active']);
+        $company = Company::create(['name' => 'Loja '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active', 'setup_wizard_completed_at' => now()]);
         CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'active', 'starts_at' => now()]);
         $user = User::create(['company_id' => $company->id, 'name' => 'Ana', 'email' => fake()->unique()->safeEmail(), 'password' => 'password-password', 'email_verified_at' => now(), 'role' => 'owner']);
 

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\ImportRun;
 use App\Services\CsvImportService;
+use App\Services\StaffNotifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +15,7 @@ class ProcessCsvImport implements ShouldQueue
 
     public function __construct(public int $importRunId) {}
 
-    public function handle(CsvImportService $imports): void
+    public function handle(CsvImportService $imports, StaffNotifier $notifier): void
     {
         $run = ImportRun::withoutGlobalScopes()->with('company')->findOrFail($this->importRunId);
         $run->update(['status' => 'processing']);
@@ -30,6 +31,8 @@ class ProcessCsvImport implements ShouldQueue
             report($exception);
             $run->update(['status' => 'failed', 'errors' => ['arquivo' => $this->failureMessage($exception)]]);
         }
+
+        $notifier->importFinished($run->fresh());
     }
 
     private function failureMessage(\Throwable $exception): string

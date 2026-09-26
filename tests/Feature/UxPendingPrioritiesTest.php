@@ -12,6 +12,8 @@ use App\Filament\Widgets\SetupChecklistWidget;
 use App\Models\Company;
 use App\Models\CompanySubscription;
 use App\Models\Customer;
+use App\Models\MessageTemplate;
+use App\Models\PackageOffer;
 use App\Models\Pet;
 use App\Models\Plan;
 use App\Models\Service;
@@ -26,7 +28,7 @@ class UxPendingPrioritiesTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_setup_checklist_hides_when_core_setup_is_done(): void
+    public function test_setup_checklist_stays_until_every_step_is_done(): void
     {
         [$company, $user] = $this->company();
         $this->actingAs($user);
@@ -39,6 +41,14 @@ class UxPendingPrioritiesTest extends TestCase
         $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Ana', 'phone' => '5511999999999']);
         Pet::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'name' => 'Thor']);
         $company->forceFill(['hours_configured_at' => now()])->saveQuietly();
+        $user->unsetRelation('company');
+
+        $this->assertTrue(SetupChecklist::shouldShow($company->fresh()));
+        $this->assertTrue(SetupChecklistWidget::canView());
+
+        MessageTemplate::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Confirmação', 'type' => 'confirmation', 'body' => 'Olá {{pet}}', 'active' => true]);
+        PackageOffer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => '4 banhos', 'credits' => 4, 'active' => true]);
+        $company->forceFill(['guide_viewed_at' => now()])->saveQuietly();
         $user->unsetRelation('company');
 
         $this->assertFalse(SetupChecklist::shouldShow($company->fresh()));
@@ -101,7 +111,7 @@ class UxPendingPrioritiesTest extends TestCase
     private function company(): array
     {
         $plan = Plan::create(['name' => 'Teste', 'contact_limit' => 100, 'task_limit' => 100, 'is_default' => true]);
-        $company = Company::create(['name' => 'Empresa UX '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active']);
+        $company = Company::create(['name' => 'Empresa UX '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active', 'setup_wizard_completed_at' => now()]);
         CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'active']);
         $user = User::create(['company_id' => $company->id, 'name' => 'Dona', 'email' => fake()->unique()->safeEmail(), 'password' => 'password-password']);
         $user->forceFill(['email_verified_at' => now()])->save();

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Customers\Pages;
 
+use App\Filament\Concerns\RedirectsFirstVisit;
 use App\Filament\Resources\Customers\CustomerResource;
 use App\Models\Company;
 use App\Services\PhoneNormalizer;
@@ -12,6 +13,8 @@ use Illuminate\Validation\ValidationException;
 
 class CreateCustomer extends CreateRecord
 {
+    use RedirectsFirstVisit;
+
     protected static string $resource = CustomerResource::class;
 
     protected function mutateFormDataBeforeCreate(array $data): array

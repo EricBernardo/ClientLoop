@@ -7,6 +7,7 @@ use App\Models\CompanySubscription;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\DefaultMessageTemplateService;
+use App\Support\FirstVisitGuide;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -50,6 +51,6 @@ class RegistrationController extends Controller
             return redirect()->route('verification.notice');
         }
 
-        return redirect('/admin');
+        return redirect()->to(FirstVisitGuide::url($user->company));
     }
 }

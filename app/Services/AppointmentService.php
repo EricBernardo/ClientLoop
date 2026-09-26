@@ -132,10 +132,42 @@ class AppointmentService
                 'recurrence_group' => $group,
                 'confirmation_token' => Str::random(40),
             ]);
+            if ($i === 0) {
+                $this->queueFirstVisitConfirmation($appointment);
+            }
+
             $created[] = $appointment;
         }
 
         return $created;
+    }
+
+    public function queueFirstVisitConfirmation(Appointment $appointment): void
+    {
+        $company = Company::query()->find($appointment->company_id);
+
+        if (! $company || $company->setup_wizard_completed_at !== null) {
+            return;
+        }
+
+        $appointment->loadMissing('customer', 'service', 'pet');
+
+        if (! $appointment->customer) {
+            return;
+        }
+
+        app(ContactTaskService::class)->create(
+            $company,
+            $appointment->customer,
+            'confirmation',
+            now(),
+            [
+                'appointment' => $appointment,
+                'service' => $appointment->service,
+                'pet' => $appointment->pet,
+                'cycle_key' => 'appointment:'.$appointment->id,
+            ],
+        );
     }
 
     private function queueFollowUp(Appointment $appointment, string $reason): void

@@ -110,9 +110,9 @@ class CamadaQuatroSeisTest extends TestCase
         [$company, , $customer, $pet, $service] = $this->baseContext();
         $company->forceFill(['public_booking_token' => 'booking-token'])->saveQuietly();
 
-        $this->get('/agendar/booking-token')->assertOk()->assertSee($company->name);
+        $this->get('/book/booking-token')->assertOk()->assertSee($company->name);
 
-        $this->post('/agendar/booking-token', [
+        $this->post('/book/booking-token', [
             'customer_name' => 'Nova tutora',
             'customer_phone' => '11988887777',
             'pet_name' => 'Bob',
@@ -124,8 +124,8 @@ class CamadaQuatroSeisTest extends TestCase
         $this->assertNotNull($appointment);
         $this->assertNotNull($appointment->confirmation_token);
 
-        $this->get('/confirmar/'.$appointment->confirmation_token)->assertOk();
-        $this->post('/confirmar/'.$appointment->confirmation_token)->assertRedirect();
+        $this->get('/confirm/'.$appointment->confirmation_token)->assertOk();
+        $this->post('/confirm/'.$appointment->confirmation_token)->assertRedirect();
         $this->assertSame('confirmed', $appointment->fresh()->status);
     }
 
@@ -177,7 +177,7 @@ class CamadaQuatroSeisTest extends TestCase
     private function company(): array
     {
         $plan = Plan::create(['name' => 'Trial', 'contact_limit' => 100, 'task_limit' => 100, 'is_default' => true]);
-        $company = Company::create(['name' => 'Loja '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active']);
+        $company = Company::create(['name' => 'Loja '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active', 'setup_wizard_completed_at' => now()]);
         CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'active', 'starts_at' => now()]);
         $user = User::create(['company_id' => $company->id, 'name' => 'Ana', 'email' => fake()->unique()->safeEmail(), 'password' => 'password-password', 'email_verified_at' => now(), 'role' => 'owner']);
 

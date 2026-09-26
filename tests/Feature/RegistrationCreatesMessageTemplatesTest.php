@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\BusinessSettings;
 use App\Models\MessageTemplate;
 use App\Models\User;
 use App\Services\DefaultMessageTemplateService;
@@ -25,7 +26,7 @@ class RegistrationCreatesMessageTemplatesTest extends TestCase
             'email' => $email,
             'password' => 'password-password',
             'password_confirmation' => 'password-password',
-        ])->assertRedirect('/admin');
+        ])->assertRedirect(BusinessSettings::getUrl(panel: 'company'));
 
         $user = User::where('email', $email)->firstOrFail();
         $defaults = app(DefaultMessageTemplateService::class)->defaults();

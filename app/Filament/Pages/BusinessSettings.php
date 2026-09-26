@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Support\FirstVisitGuide;
 use BackedEnum;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Repeater;
@@ -104,11 +105,16 @@ class BusinessSettings extends Page implements HasForms
         $data['confirmation_hours'] = (int) $data['confirmation_hours'];
         $data['reactivation_months'] = (int) $data['reactivation_months'];
 
-        auth()->user()->company->update([
+        $company = auth()->user()->company;
+        $company->update([
             ...$data,
             'hours_configured_at' => now(),
         ]);
 
         Notification::make()->title('Horários e regras atualizados.')->success()->send();
+
+        if ($company->setup_wizard_completed_at === null) {
+            $this->redirect(FirstVisitGuide::url($company));
+        }
     }
 }

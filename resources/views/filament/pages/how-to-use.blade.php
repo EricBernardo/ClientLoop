@@ -4,7 +4,7 @@
     </style>
 
     <div class="guide-shell">
-        <section class="guide-hero"><p class="guide-eyebrow">Comece por aqui</p><h2>Organize seu pet shop, um banho de cada vez.</h2><p>O ClientLoop junta sua agenda, os pets, os responsáveis, as confirmações pelo WhatsApp e os pacotes de banho. Você faz uma etapa por vez; o sistema lembra o restante.</p><div class="guide-note">✓ Rotina inicial: segunda a sábado, das 9h às 17h. O intervalo da agenda (15, 30 ou 60 min) e as regras de confirmação/reativação ficam em Horários e regras.</div></section>
+        <section class="guide-hero"><p class="guide-eyebrow">Comece por aqui</p><h2>Organize seu pet shop, um banho de cada vez.</h2><p>O ClientLoop junta sua agenda, os pets, os responsáveis, as confirmações pelo WhatsApp e os pacotes de banho. Você faz uma etapa por vez; o sistema lembra o restante. No primeiro acesso, cada tela real abre na ordem: horários, serviço, responsável, pet, um horário na agenda, a fila de contatos e a conclusão do atendimento.</p><div class="guide-note">✓ Rotina inicial: segunda a sábado, das 9h às 17h. O intervalo da agenda (15, 30 ou 60 min) e as regras de confirmação/reativação ficam em Horários e regras.</div></section>
 
         <section class="guide-section"><p class="guide-flow-label">Prepare uma vez</p><h2>Cadastre o que você vende e atende</h2><p>Esses passos deixam a sua rotina mais rápida todos os dias.</p><div class="guide-steps">
             <article class="guide-step"><div class="guide-step__number">1</div><h3>Defina seus horários</h3><p>Comece com segunda a sábado, das 9h às 17h. Ajuste o intervalo da agenda e as regras de confirmação e reativação na mesma tela.</p><a href="{{ \App\Filament\Pages\BusinessSettings::getUrl() }}">Ajustar horários →</a></article>

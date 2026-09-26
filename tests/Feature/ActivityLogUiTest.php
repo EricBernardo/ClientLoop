@@ -73,7 +73,7 @@ class ActivityLogUiTest extends TestCase
     private function company(): array
     {
         $plan = Plan::create(['name' => 'Teste', 'contact_limit' => 100, 'task_limit' => 100, 'is_default' => true]);
-        $company = Company::create(['name' => 'Empresa '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active']);
+        $company = Company::create(['name' => 'Empresa '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active', 'setup_wizard_completed_at' => now()]);
         CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'active']);
         $user = User::create(['company_id' => $company->id, 'name' => 'Usuária', 'email' => fake()->unique()->safeEmail(), 'password' => 'password-password', 'email_verified_at' => now()]);
 

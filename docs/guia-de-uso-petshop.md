@@ -54,10 +54,10 @@ Escolha um caminho.
 
 ### Caminho A — empresa nova (do zero)
 
-1. Abra `/register` (também existe o atalho `/cadastro`).
+1. Abra `/register`.
 2. Preencha nome da empresa, seu nome, e-mail e senha (**mínimo 12 caracteres**, com confirmação).
 3. Confirme o e-mail (no Docker, o Mailpit fica em `http://localhost:8025`).
-4. Depois da confirmação você cai em `/admin`.
+4. Depois da confirmação o painel abre em `/admin/business-settings`. Siga o aviso no topo de cada tela: horários, serviço, responsável, pet, agenda, fila de contatos e conclusão do atendimento. Ao terminar, o painel livre abre em `/admin`.
 
 Isso cria a empresa em período de teste, associa o plano padrão e o primeiro usuário. Os dados de uma loja **não misturam** com os de outra (`company_id`).
 
@@ -481,7 +481,7 @@ Cada plano limita **responsáveis no mês** e **tarefas no mês**.
 
 1. No `/platform`, veja ou edite o plano (contatos / tarefas).
 2. Estourar responsáveis bloqueia novo cadastro com mensagem de limite.
-3. Estourar tarefas: o gerador **simplesmente não cria** a tarefa; a campanha recusa se o lote inteiro não couber.
+3. Estourar tarefas: o gerador **não cria** a tarefa e a loja vê o aviso **Cota de tarefas esgotada** no sino do painel, uma vez naquele mês. A campanha recusa se o lote inteiro não couber (a tela mostra o erro, sem aviso no sino).
 
 Uso é por mês calendário (`YYYY-MM`).
 
@@ -566,43 +566,50 @@ Situações da tarefa: Pendente, Concluída, Cancelada.
 
 ## Apêndice A — O que a demo já cria
 
-Empresa **Pet Shop Patinhas**, expediente seg–sáb 9h–17h, intervalo de **30 min**, almoço bloqueado **12h–13h**. Link público de agendamento: `/agendar/patinhas-demo-booking`.
+Empresa **Pet Shop Patinhas**, no ClientLoop há **~1 ano e meio** (assinatura desde a abertura). Expediente seg–sáb 9h–17h, intervalo de **30 min**, almoço bloqueado **12h–13h**. Link público de agendamento: `/book/patinhas-demo-booking`.
 
 **Contas**
 
 | Papel | URL | E-mail | Senha |
 |---|---|---|---|
-| Dona da loja | `/admin` | `demo@clientloop.test` | `clientloop123` |
-| Atendente | `/admin` | `atendente@clientloop.test` | `clientloop123` |
+| Dona da loja (desde o início) | `/admin` | `demo@clientloop.test` | `clientloop123` |
+| Atendente (entrou ~há 8 meses) | `/admin` | `atendente@clientloop.test` | `clientloop123` |
 | Superadmin | `/platform` | `admin@clientloop.test` | `clientloop123` |
 
-**Tosadores:** Marina e Paula (ativos).
+**Tosadores:** Marina (desde o início) e Paula (mesma época da atendente).
 
 **Serviços:** Banho (60 min, retorno 1 mês), Tosa (120 min), Banho com higiênico e hidratação (60 min).
 
-**Pessoas e pets**
+**Pessoas e pets** (entrada escalonada ao longo dos 18 meses)
 
-| Responsável | Telefone (demo) | Pets |
-|---|---|---|
-| Ana Beatriz Lima | 5511998765432 | Thor (cão, Shih-tzu, pequeno, calmo) |
-| Carlos Eduardo Alves | 5511987654321 | Mel (cão, Labrador, grande, agitado; alergia a perfume) |
-| Fernanda Souza | 5511976543210 | Nina (gato, Siamês, pequeno, arisco) |
-| João Pedro Martins | 5511965432109 | Bob (cão, SRD, médio) — João inativo há ~9 meses |
-| Mariana Oliveira | 5511954321098 | Amora e Pingo |
+| Responsável | Telefone (demo) | Pets | Desde |
+|---|---|---|---|
+| Ana Beatriz Lima | 5511998765432 | Thor | abertura |
+| Carlos Eduardo Alves | 5511987654321 | Mel | ~mês 3 |
+| João Pedro Martins | 5511965432109 | Bob | ~mês 2 — **inativo ~9 meses** |
+| Fernanda Souza | 5511976543210 | Nina | ~mês 6 |
+| Mariana Oliveira | 5511954321098 | Amora e Pingo | ~mês 12 / 15 |
+| Ricardo Mendes | 5511943210987 | Luna | ~mês 15 — retorno atrasado |
 
-**Pacotes**
+**Histórico:** dezenas de atendimentos concluídos (com algumas faltas/cancelamentos), pacotes esgotados do Thor e da Nina, campanha **Retornos de inverno** já concluída, uso mensal e trilha no histórico de ações.
 
-- Thor: **4 banhos**, pago, 1 crédito já usado (banho concluído no último dia útil).
+**Pacotes atuais**
+
+- Thor: **4 banhos**, pago há ~10 dias, 1 crédito usado (banho do último dia útil).
 - Mel: **4 tosas**, **pendente** — não dá para usar até pagar.
-- Amora: **4 banhos**, pago, recente.
+- Amora: **4 banhos**, pago há ~3 dias (saldo cheio → “próximas etapas”).
+- Luna e Pingo: **4 banhos** com **1 crédito restante** cada (“pouco saldo”).
+- Pacotes antigos esgotados/vencidos do Thor e da Nina (“pacotes vencidos”).
 
-**Agenda** (datas relativas ao dia em que o seed rodou)
+**Agenda desta semana** (datas relativas ao dia do seed)
 
+- **Hoje:** Luna 09:00, Pingo 10:00 e Nina 14:00 (card Agenda de hoje).
 - Thor + Mel às **09:00** no próximo dia útil, em paralelo (Marina / Paula).
 - Amora + Pingo às **14:00** no próximo dia útil, em paralelo.
 - Nina: higiênico 10:00 no dia útil seguinte (confirmado) **e** mesma hora na semana seguinte (recorrência).
 - Thor: banho concluído no último dia útil, com baixa de crédito.
 - Bob: **falta** no último dia útil às 15:00 — follow-up de remarcar já na fila.
+- Luna: cancelamento recente na semana anterior.
 
 **Lista de espera:** Nina (Fernanda) pedindo encaixe às 15:00 no próximo dia útil.
 
@@ -610,12 +617,13 @@ Empresa **Pet Shop Patinhas**, expediente seg–sáb 9h–17h, intervalo de **30
 
 **Campanhas**
 
+- Concluída **Retornos de inverno**.
 - Rascunho **Pets para reativar**.
 - Rascunho agendado **Retornos da semana** (`starts_at` amanhã).
 
-**Fila:** confirmações de Thor e Amora; reativação do João; follow-up da falta do Bob.
+**Fila:** confirmações de Thor e Amora; reativação do João; follow-up da falta do Bob; retorno da Luna.
 
-Use a demo para pular o setup e ir direto aos fluxos: pagar o pacote da Mel, concluir o Thor e clicar **Agendar próxima etapa**, abrir WhatsApp da Amora, tratar o João, promover a lista de espera da Nina, abrir o link público `/agendar/patinhas-demo-booking`.
+Use a demo para pular o setup e ir direto aos fluxos: pagar o pacote da Mel, concluir o Thor e clicar **Agendar próxima etapa**, abrir WhatsApp da Amora, tratar o João, promover a lista de espera da Nina, abrir o link público `/book/patinhas-demo-booking`, e abrir **Relatórios** / **Histórico de ações** com volume de loja madura.
 
 ---
 

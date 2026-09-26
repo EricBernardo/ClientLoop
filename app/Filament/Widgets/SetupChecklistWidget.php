@@ -30,6 +30,13 @@ class SetupChecklistWidget extends Widget
         return $company ? SetupChecklist::steps($company) : [];
     }
 
+    public function getCoreCompleteProperty(): bool
+    {
+        $company = auth()->user()?->company;
+
+        return $company instanceof Company && SetupChecklist::coreComplete($company);
+    }
+
     public function dismiss(): void
     {
         $company = auth()->user()?->company;

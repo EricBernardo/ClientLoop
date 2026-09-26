@@ -13,11 +13,21 @@ use Illuminate\Validation\ValidationException;
 
 class ContactTaskService
 {
-    public function __construct(private QuotaService $quota, private TemplateRenderer $renderer) {}
+    public function __construct(
+        private QuotaService $quota,
+        private TemplateRenderer $renderer,
+        private StaffNotifier $notifier,
+    ) {}
 
     public function create(Company $company, Customer $customer, string $type, \DateTimeInterface $dueAt, array $links = [], ?MessageTemplate $template = null): ?ContactTask
     {
-        if (! $customer->can_contact || ! $this->quota->canCreateTasks($company)) {
+        if (! $customer->can_contact) {
+            return null;
+        }
+
+        if (! $this->quota->canCreateTasks($company)) {
+            $this->notifier->taskQuotaExhausted($company);
+
             return null;
         }
         $template ??= MessageTemplate::withoutGlobalScopes()->where('company_id', $company->id)->where('type', $type)->where('active', true)->first();
