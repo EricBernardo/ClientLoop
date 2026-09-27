@@ -4,7 +4,18 @@ Série para a página de vídeos. Cada vídeo mostra um trecho do uso do sistema
 
 Grave com uma loja de demonstração já preparada: um responsável, um pet, o serviço Banho e um pacote pago. Em cada clique, pare cerca de um segundo. Cole na IA só o texto da narração. Peça voz em português do Brasil, tom calmo, ritmo de explicação, sem música.
 
-São oito vídeos, na ordem em que a pessoa usa o ClientLoop. Cada um fica entre um minuto e um minuto e meio.
+São oito vídeos, na ordem em que a pessoa usa o ClientLoop. Cada um fica entre um minuto e um minuto e meio. A página do painel é **Vídeos** (`/admin/videos`). Salve cada arquivo em `storage/app/public/videos/` com o nome abaixo. Se o player não abrir, rode `php artisan storage:link`.
+
+| Vídeo | Narração | Gravação da tela |
+| --- | --- | --- |
+| 1. O que o ClientLoop faz | `01-o-que-o-clientloop-faz.mp3` | `01-o-que-o-clientloop-faz.mp4` |
+| 2. Horários e serviços | `02-horarios-e-servicos.mp3` | `02-horarios-e-servicos.mp4` |
+| 3. Responsável, pet e lista pronta | `03-responsavel-pet-e-lista.mp3` | `03-responsavel-pet-e-lista.mp4` |
+| 4. Pacotes | `04-pacotes.mp3` | `04-pacotes.mp4` |
+| 5. Marcar um horário | `05-marcar-um-horario.mp3` | `05-marcar-um-horario.mp4` |
+| 6. Confirmar pelo WhatsApp | `06-confirmar-pelo-whatsapp.mp3` | `06-confirmar-pelo-whatsapp.mp4` |
+| 7. Concluir, faltar, cancelar e marcar a próxima visita | `07-concluir-e-proxima-visita.mp3` | `07-concluir-e-proxima-visita.mp4` |
+| 8. O que o painel acompanha depois | `08-o-que-o-painel-acompanha.mp3` | `08-o-que-o-painel-acompanha.mp4` |
 
 ## Vídeo 1 — O que o ClientLoop faz
 
