@@ -186,7 +186,7 @@ class OperationalRulesTest extends TestCase
             ->assertSee('Link para o tutor')
             ->assertSee('Lista de espera e campanhas')
             ->assertSee('Fila de WhatsApp')
-            ->assertSee('Primeiro acesso nas telas reais')
+            ->assertSee('Importação da planilha')
             ->assertSee('Avisos para a equipe')
             ->assertSee('Relatórios do mês')
             ->assertSee(route('register'))
@@ -226,7 +226,7 @@ class OperationalRulesTest extends TestCase
     private function company(): array
     {
         $plan = Plan::create(['name' => 'Teste', 'contact_limit' => 100, 'task_limit' => 100, 'is_default' => true]);
-        $company = Company::create(['name' => 'Empresa teste '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active', 'setup_wizard_completed_at' => now()]);
+        $company = Company::create(['name' => 'Empresa teste '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active']);
         CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'active']);
         $user = User::create(['company_id' => $company->id, 'name' => 'Usuária', 'email' => fake()->unique()->safeEmail(), 'password' => 'password-password']);
         $user->forceFill(['email_verified_at' => now()])->save();

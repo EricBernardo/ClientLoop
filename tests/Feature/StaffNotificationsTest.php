@@ -28,8 +28,7 @@ class StaffNotificationsTest extends TestCase
 
     public function test_company_panel_renders_the_notification_bell(): void
     {
-        [$company, $user] = $this->shop();
-        $company->forceFill(['setup_wizard_completed_at' => now()])->save();
+        [, $user] = $this->shop();
         $user->forceFill(['email_verified_at' => now()])->save();
 
         $this->actingAs($user)

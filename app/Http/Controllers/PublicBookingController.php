@@ -7,7 +7,6 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Pet;
 use App\Models\Service;
-use App\Services\AppointmentService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -62,7 +61,6 @@ class PublicBookingController extends Controller
                 'status' => 'scheduled',
                 'confirmation_token' => Str::random(40),
             ]);
-            app(AppointmentService::class)->queueFirstVisitConfirmation($appointment);
         } catch (ValidationException $exception) {
             return back()->withInput()->withErrors($exception->errors());
         }

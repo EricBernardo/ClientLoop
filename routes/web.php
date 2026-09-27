@@ -4,7 +4,7 @@ use App\Http\Controllers\AppointmentConfirmationController;
 use App\Http\Controllers\ImportTemplateController;
 use App\Http\Controllers\PublicBookingController;
 use App\Http\Controllers\RegistrationController;
-use App\Support\FirstVisitGuide;
+use Filament\Pages\Dashboard;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -28,7 +28,7 @@ Route::get('/verify-email', fn () => view('auth.verify'))->middleware('auth')->n
 Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
     $request->fulfill();
 
-    return redirect()->to(FirstVisitGuide::url($request->user()->company));
+    return redirect()->to(Dashboard::getUrl(panel: 'company'));
 })->middleware(['auth', 'signed'])->name('verification.verify');
 Route::post('/email/verification-notification', function (Request $request) {
     $request->user()->sendEmailVerificationNotification();

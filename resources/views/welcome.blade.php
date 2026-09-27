@@ -26,7 +26,7 @@
                 <div>
                     <div class="eyebrow">Feito para pet shops de banho e tosa</div>
                     <h1>Sua agenda, seus pets e seus pacotes no mesmo lugar.</h1>
-                    <p>Marque banhos sem conflito, confirme pelo WhatsApp ou por link, dê ao tutor um link de agendamento, acompanhe pacotes e retornos — e não deixe ninguém sumir da fila. No primeiro acesso, o painel abre uma tela de cada vez. Depois, o sino avisa a equipe quando alguém confirma, cancela ou quando a cota do mês acaba.</p>
+                    <p>Marque banhos sem conflito, confirme pelo WhatsApp ou por link, dê ao tutor um link de agendamento, acompanhe pacotes e retornos — e não deixe ninguém sumir da fila. O sino avisa a equipe quando alguém confirma, cancela ou quando a cota do mês acaba.</p>
                     <div class="actions">
                         <a class="button primary" href="{{ route('register') }}">Começar gratuitamente</a>
                         <a class="button secondary" href="#recursos">Ver o que inclui</a>
@@ -89,8 +89,8 @@
                 </article>
                 <article class="card">
                     <div class="icon">1</div>
-                    <h3>Primeiro acesso nas telas reais</h3>
-                    <p>Horários, serviço, responsável, pet, um horário na agenda, a fila com a mensagem pronta e a conclusão do atendimento. O checklist fica para o pacote e o guia.</p>
+                    <h3>Importação da planilha</h3>
+                    <p>Baixe o modelo, preencha responsáveis e pets e envie o CSV. O painel mostra o que entrou e a linha que falhou.</p>
                 </article>
                 <article class="card">
                     <div class="icon">⚑</div>
@@ -115,7 +115,7 @@
                 <div class="step">
                     <div class="step-num">01 — PREPARE</div>
                     <h3>Serviços, equipe e horários</h3>
-                    <p>No primeiro acesso o painel conduz horários, o primeiro serviço, um responsável com pet, a agenda, a fila e a conclusão. Depois entram tosadores, mensagens e a importação em CSV.</p>
+                    <p>Cadastre horários, serviços, responsáveis e pets. Tosadores entram na agenda; atendentes entram no painel. A planilha em CSV traz a lista que já existe.</p>
                 </div>
                 <div class="step">
                     <div class="step-num">02 — AGENDE</div>
@@ -141,7 +141,7 @@
             <div>
                 <div class="eyebrow" style="color:#74cbbd">Comece agora</div>
                 <h2>Deixe a rotina do pet shop mais leve a partir do próximo banho.</h2>
-                <p>Crie a conta e siga as telas do primeiro atendimento. A agenda, a fila, o link do tutor e os relatórios ficam no painel.</p>
+                <p>Crie a conta e abra o painel. A agenda, a fila, o link do tutor e os relatórios ficam no mesmo lugar.</p>
             </div>
             <a class="button primary" href="{{ route('register') }}">Criar conta</a>
         </section>

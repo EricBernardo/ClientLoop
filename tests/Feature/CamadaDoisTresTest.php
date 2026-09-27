@@ -20,7 +20,6 @@ use App\Models\User;
 use App\Services\AppointmentService;
 use App\Services\PackageService;
 use App\Services\TemplateRenderer;
-use App\Support\SetupChecklist;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -99,25 +98,6 @@ class CamadaDoisTresTest extends TestCase
         Artisan::call('clientloop:launch-campaigns');
 
         $this->assertSame('active', $campaign->fresh()->status);
-    }
-
-    public function test_setup_checklist_requires_hours_and_marks_guide_when_viewed(): void
-    {
-        [$company, $user] = $this->company();
-        $this->actingAs($user);
-        Service::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Banho', 'duration_minutes' => 60]);
-        $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Ana', 'phone' => '5511999999999']);
-        Pet::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'name' => 'Thor']);
-
-        $this->assertTrue(SetupChecklist::shouldShow($company->fresh()));
-        $company->update(['hours_configured_at' => now()]);
-        $this->assertTrue(SetupChecklist::shouldShow($company->fresh()));
-
-        $steps = SetupChecklist::steps($company->fresh());
-        $this->assertFalse(collect($steps)->firstWhere('key', 'guide')['done']);
-        $this->assertFalse(collect($steps)->firstWhere('key', 'packages')['done']);
-        $company->update(['guide_viewed_at' => now()]);
-        $this->assertTrue(collect(SetupChecklist::steps($company->fresh()))->firstWhere('key', 'guide')['done']);
     }
 
     public function test_package_sale_clears_next_return_and_renewal_task_after_last_credit(): void
@@ -207,7 +187,7 @@ class CamadaDoisTresTest extends TestCase
     private function company(): array
     {
         $plan = Plan::create(['name' => 'Trial', 'contact_limit' => 100, 'task_limit' => 100, 'is_default' => true]);
-        $company = Company::create(['name' => 'Loja '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active', 'setup_wizard_completed_at' => now()]);
+        $company = Company::create(['name' => 'Loja '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active']);
         CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'active', 'starts_at' => now()]);
         $user = User::create(['company_id' => $company->id, 'name' => 'Ana', 'email' => fake()->unique()->safeEmail(), 'password' => 'password-password', 'email_verified_at' => now(), 'role' => 'owner']);
 

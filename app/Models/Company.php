@@ -21,10 +21,6 @@ class Company extends Model
         'business_ends_at_hour',
         'appointment_slot_minutes',
         'business_breaks',
-        'onboarding_completed_at',
-        'setup_wizard_completed_at',
-        'hours_configured_at',
-        'guide_viewed_at',
         'public_booking_token',
     ];
 
@@ -33,10 +29,6 @@ class Company extends Model
         return [
             'business_days' => 'array',
             'business_breaks' => 'array',
-            'onboarding_completed_at' => 'datetime',
-            'setup_wizard_completed_at' => 'datetime',
-            'hours_configured_at' => 'datetime',
-            'guide_viewed_at' => 'datetime',
         ];
     }
 

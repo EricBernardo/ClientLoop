@@ -55,10 +55,6 @@ class DemoClinicSeeder extends Seeder
             'business_breaks' => [
                 ['label' => 'Almoço', 'start_hour' => 12, 'start_minute' => 0, 'end_hour' => 13, 'end_minute' => 0],
             ],
-            'hours_configured_at' => $openedAt->copy()->addDays(1),
-            'guide_viewed_at' => $openedAt->copy()->addDays(1),
-            'onboarding_completed_at' => $openedAt->copy()->addDays(3),
-            'setup_wizard_completed_at' => $openedAt->copy()->addDays(3),
             'public_booking_token' => 'patinhas-demo-booking',
         ]);
         $company->forceFill(['created_at' => $openedAt, 'updated_at' => now()])->save(['timestamps' => false]);
@@ -662,8 +658,6 @@ class DemoClinicSeeder extends Seeder
     private function seedActivityTrail(Company $company, User $owner, User $attendant, Carbon $openedAt): void
     {
         $events = [
-            [$openedAt->copy()->addDays(1), $owner, 'company.hours_configured', null],
-            [$openedAt->copy()->addDays(3), $owner, 'company.onboarding_completed', null],
             [$openedAt->copy()->addMonths(4), $owner, 'package.sold', null],
             [$openedAt->copy()->addMonths(10), $owner, 'team.member_added', null],
             [$openedAt->copy()->addMonths(12), $attendant, 'campaign.completed', null],

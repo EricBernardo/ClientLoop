@@ -45,8 +45,6 @@ class EnsureDemoDataTest extends TestCase
 
         $company = Company::query()->where('slug', 'petshop-patinhas-demo')->firstOrFail();
 
-        $this->assertNotNull($company->hours_configured_at);
-        $this->assertNotNull($company->setup_wizard_completed_at);
         $this->assertTrue($company->created_at->lte(now()->subMonths(17)));
         $this->assertSame(30, $company->appointment_slot_minutes);
         $this->assertNotEmpty($company->business_breaks);

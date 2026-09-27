@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Filament\Pages\BusinessSettings;
 use App\Models\Company;
 use App\Models\User;
 use Filament\Facades\Filament;
+use Filament\Pages\Dashboard;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
@@ -59,7 +59,7 @@ class EmailVerificationToggleTest extends TestCase
             'email' => $email,
             'password' => 'password-password',
             'password_confirmation' => 'password-password',
-        ])->assertRedirect(BusinessSettings::getUrl(panel: 'company'));
+        ])->assertRedirect(Dashboard::getUrl(panel: 'company'));
 
         $user = User::where('email', $email)->firstOrFail();
         $this->assertNotNull($user->email_verified_at);

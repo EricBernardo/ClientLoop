@@ -9,8 +9,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('pet_packages', function (Blueprint $table): void {
+            $table->dropForeign(['service_id']);
+            // MySQL uses this composite index for the company_id foreign key
+            // because company_id is its leftmost column.
+            $table->dropForeign(['company_id']);
             $table->dropIndex(['company_id', 'pet_id', 'service_id']);
-            $table->dropConstrainedForeignId('service_id');
+            $table->dropColumn('service_id');
+            $table->foreign('company_id')->references('id')->on('companies')->cascadeOnDelete();
         });
 
         Schema::table('package_offers', function (Blueprint $table): void {
