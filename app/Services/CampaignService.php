@@ -40,7 +40,10 @@ class CampaignService
                 continue;
             }
 
-            $task = $this->tasks->create($company, $customer, $campaign->type, $campaign->starts_at ?? now(), ['campaign' => $campaign], $campaign->messageTemplate);
+            $task = $this->tasks->create($company, $customer, $campaign->type, $campaign->starts_at ?? now(), [
+                'campaign' => $campaign,
+                'cycle_key' => 'campaign:'.$campaign->id,
+            ], $campaign->messageTemplate);
             $recipient->update(['contact_task_id' => $task?->id, 'status' => $task ? 'queued' : 'skipped']);
             $created += (int) ($task !== null);
         }

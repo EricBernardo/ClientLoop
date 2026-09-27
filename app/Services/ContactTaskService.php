@@ -32,7 +32,7 @@ class ContactTaskService
         }
         $template ??= MessageTemplate::withoutGlobalScopes()->where('company_id', $company->id)->where('type', $type)->where('active', true)->first();
         $cycleKey = $links['cycle_key'] ?? null;
-        $existing = ContactTask::withoutGlobalScopes()->where('company_id', $company->id)->where('customer_id', $customer->id)->where('type', $type)->when($cycleKey, fn ($query) => $query->where('cycle_key', $cycleKey))->when($links['appointment'] ?? null, fn ($q, $a) => $q->where('appointment_id', $a->id))->exists();
+        $existing = ContactTask::withoutGlobalScopes()->where('company_id', $company->id)->where('customer_id', $customer->id)->where('type', $type)->where('status', '!=', 'cancelled')->when($cycleKey, fn ($query) => $query->where('cycle_key', $cycleKey))->when($links['appointment'] ?? null, fn ($q, $a) => $q->where('appointment_id', $a->id))->exists();
         if ($existing) {
             return null;
         }
@@ -77,7 +77,7 @@ class ContactTaskService
         DB::transaction(function () use ($task, $outcome, $note) {
             $isConfirmationRetry = $outcome === 'no_response'
                 && $task->type === 'confirmation'
-                && $task->attempts()->count() === 0;
+                && $task->attempts()->where('outcome', 'no_response')->count() === 0;
 
             $task->attempts()->create(['user_id' => auth()->id(), 'outcome' => $outcome, 'note' => $note, 'attempted_at' => now()]);
 

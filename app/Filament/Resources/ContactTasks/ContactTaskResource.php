@@ -128,7 +128,7 @@ class ContactTaskResource extends Resource
                                 'no_response' => 'Sem resposta',
                                 'opt_out' => 'Não receber contato',
                             ])
-                            ->helperText(fn (ContactTask $record): ?string => $record->type === 'confirmation' && $record->attempts()->count() === 0
+                            ->helperText(fn (ContactTask $record): ?string => $record->type === 'confirmation' && $record->attempts()->where('outcome', 'no_response')->count() === 0
                                 ? 'Em confirmação, a primeira “Sem resposta” mantém a tarefa na fila para uma segunda tentativa.'
                                 : null)
                             ->searchable()

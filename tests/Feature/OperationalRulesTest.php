@@ -57,6 +57,57 @@ class OperationalRulesTest extends TestCase
         $this->assertTrue($appointment->fresh()->scheduled_at->isAfter(now()->addDays(2)));
     }
 
+    public function test_reschedule_into_the_confirmation_window_creates_a_new_task(): void
+    {
+        [$company, $user] = $this->company();
+        $this->actingAs($user);
+        $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Ana', 'phone' => '5511980000002']);
+        $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'scheduled_at' => now()->addDays(2), 'status' => 'scheduled']);
+        $task = app(ContactTaskService::class)->create($company, $customer, 'confirmation', now(), ['appointment' => $appointment, 'cycle_key' => 'appointment:'.$appointment->id]);
+
+        app(ContactTaskService::class)->reschedule($appointment, now()->addHours(6));
+        Artisan::call('clientloop:generate-tasks');
+        Artisan::call('clientloop:generate-tasks');
+
+        $this->assertSame('cancelled', $task->fresh()->status);
+        $this->assertSame(1, ContactTask::withoutGlobalScopes()->where('appointment_id', $appointment->id)->where('type', 'confirmation')->where('status', 'pending')->count());
+        $this->assertSame(2, ContactTask::withoutGlobalScopes()->where('appointment_id', $appointment->id)->where('type', 'confirmation')->count());
+    }
+
+    public function test_completed_confirmation_is_not_created_again(): void
+    {
+        [$company, $user] = $this->company();
+        $this->actingAs($user);
+        $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Ana', 'phone' => '5511980000008']);
+        $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'scheduled_at' => now()->addHours(12), 'status' => 'scheduled']);
+
+        Artisan::call('clientloop:generate-tasks');
+        $task = ContactTask::withoutGlobalScopes()->where('appointment_id', $appointment->id)->where('type', 'confirmation')->firstOrFail();
+        app(ContactTaskService::class)->complete($task, 'no_response');
+        app(ContactTaskService::class)->complete($task->fresh(), 'no_response');
+        Artisan::call('clientloop:generate-tasks');
+
+        $this->assertSame(1, ContactTask::withoutGlobalScopes()->where('appointment_id', $appointment->id)->where('type', 'confirmation')->count());
+        $this->assertSame('completed', $task->fresh()->status);
+    }
+
+    public function test_generator_skips_reactivation_when_a_return_is_pending(): void
+    {
+        [$company] = $this->company();
+        $customer = Customer::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'name' => 'Cliente inativo com retorno',
+            'phone' => '5511980000009',
+            'last_activity_at' => now()->subMonths(7),
+            'next_return_at' => now()->subDay(),
+        ]);
+
+        Artisan::call('clientloop:generate-tasks');
+
+        $this->assertSame(1, ContactTask::withoutGlobalScopes()->where('customer_id', $customer->id)->where('type', 'recall')->where('status', 'pending')->count());
+        $this->assertSame(0, ContactTask::withoutGlobalScopes()->where('customer_id', $customer->id)->where('type', 'reactivation')->count());
+    }
+
     public function test_unknown_template_variable_and_invalid_appointment_transition_are_rejected(): void
     {
         [$company] = $this->company();

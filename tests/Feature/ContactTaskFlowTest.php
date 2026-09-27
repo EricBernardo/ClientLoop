@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\Campaign;
 use App\Models\Company;
 use App\Models\CompanySubscription;
+use App\Models\ContactAttempt;
 use App\Models\ContactTask;
 use App\Models\Customer;
 use App\Models\MessageTemplate;
@@ -65,7 +66,41 @@ class ContactTaskFlowTest extends TestCase
         $campaign = Campaign::withoutGlobalScopes()->create(['company_id' => $company->id, 'message_template_id' => $template->id, 'name' => 'Retornos', 'type' => 'recall']);
 
         $this->assertSame(1, app(CampaignService::class)->launch($campaign));
-        $this->assertDatabaseHas('contact_tasks', ['customer_id' => $eligible->id, 'type' => 'recall', 'status' => 'pending']);
+        $this->assertDatabaseHas('contact_tasks', [
+            'customer_id' => $eligible->id,
+            'type' => 'recall',
+            'status' => 'pending',
+            'cycle_key' => 'campaign:'.$campaign->id,
+        ]);
+    }
+
+    public function test_campaign_creates_recall_when_customer_already_completed_one(): void
+    {
+        $plan = Plan::create(['name' => 'Trial', 'contact_limit' => 10, 'task_limit' => 10, 'is_default' => true]);
+        $company = Company::create(['name' => 'Campanha antiga', 'slug' => 'campanha-antiga']);
+        CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id]);
+        $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'João', 'phone' => '5511933333333', 'next_return_at' => now()->subDay()]);
+        ContactTask::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $customer->id,
+            'type' => 'recall',
+            'priority' => 'normal',
+            'due_at' => now()->subMonth(),
+            'status' => 'completed',
+            'cycle_key' => 'recall:general:2026-01-01',
+            'outcome' => 'no_response',
+            'completed_at' => now()->subMonth(),
+        ]);
+        $template = MessageTemplate::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Volte', 'type' => 'recall', 'body' => 'Olá, {{responsavel}}.', 'active' => true]);
+        $campaign = Campaign::withoutGlobalScopes()->create(['company_id' => $company->id, 'message_template_id' => $template->id, 'name' => 'Retornos', 'type' => 'recall']);
+
+        $this->assertSame(1, app(CampaignService::class)->launch($campaign));
+        $this->assertDatabaseHas('campaign_recipients', ['campaign_id' => $campaign->id, 'customer_id' => $customer->id, 'status' => 'queued']);
+        $this->assertDatabaseHas('contact_tasks', [
+            'customer_id' => $customer->id,
+            'cycle_key' => 'campaign:'.$campaign->id,
+            'status' => 'pending',
+        ]);
     }
 
     public function test_first_no_response_on_confirmation_keeps_task_pending(): void
@@ -85,6 +120,30 @@ class ContactTaskFlowTest extends TestCase
         $this->assertSame(1, $task->attempts()->count());
         $this->assertSame('scheduled', $appointment->fresh()->status);
         $this->assertDatabaseHas('activity_logs', ['event' => 'contact_task.no_response_retry', 'subject_id' => $task->id]);
+    }
+
+    public function test_api_send_does_not_consume_the_confirmation_retry(): void
+    {
+        [$company, $user, $customer, $appointment] = $this->confirmationContext();
+        $this->actingAs($user);
+        $task = app(ContactTaskService::class)->create($company, $customer, 'confirmation', now(), [
+            'appointment' => $appointment,
+            'cycle_key' => 'appointment:'.$appointment->id,
+        ]);
+        ContactAttempt::query()->create([
+            'contact_task_id' => $task->id,
+            'user_id' => $user->id,
+            'outcome' => 'api_sent',
+            'note' => 'Enviado via WhatsApp Cloud API',
+            'attempted_at' => now(),
+        ]);
+
+        app(ContactTaskService::class)->complete($task, 'no_response', 'Não atendeu');
+
+        $task->refresh();
+        $this->assertSame('pending', $task->status);
+        $this->assertNull($task->outcome);
+        $this->assertSame(1, $task->attempts()->where('outcome', 'no_response')->count());
     }
 
     public function test_second_no_response_on_confirmation_completes_task(): void

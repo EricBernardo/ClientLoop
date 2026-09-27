@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Appointment;
 use App\Models\Company;
+use App\Models\ContactTask;
 use App\Models\Customer;
 use App\Services\ContactTaskService;
 use Illuminate\Console\Command;
@@ -40,6 +41,11 @@ class GenerateContactTasks extends Command
             });
 
             Customer::withoutGlobalScopes()->where('company_id', $company->id)->whereNull('opted_out_at')->where('last_activity_at', '<=', $now->copy()->subMonths($company->reactivation_months))->whereDoesntHave('appointments', fn ($query) => $query->whereIn('status', ['scheduled', 'confirmed', 'reschedule_requested'])->where('scheduled_at', '>', $now))->each(function (Customer $customer) use ($tasks, $company, $now): void {
+                $hasPendingRecall = ContactTask::withoutGlobalScopes()->where('company_id', $company->id)->where('customer_id', $customer->id)->where('type', 'recall')->where('status', 'pending')->exists();
+                if ($hasPendingRecall) {
+                    return;
+                }
+
                 $tasks->create($company, $customer, 'reactivation', $now, ['cycle_key' => 'reactivation:'.$now->format('Y-m')]);
             });
         });
