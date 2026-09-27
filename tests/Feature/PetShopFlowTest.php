@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Filament\Resources\Appointments\AppointmentResource;
 use App\Filament\Resources\Appointments\Pages\CreateAppointment;
+use App\Filament\Resources\Appointments\Pages\EditAppointment;
+use App\Filament\Resources\Appointments\Pages\ListAppointments;
 use App\Filament\Resources\Services\Pages\CreateService;
 use App\Models\Appointment;
 use App\Models\Company;
@@ -115,6 +117,40 @@ class PetShopFlowTest extends TestCase
         $this->assertNotNull($customer->last_activity_at);
         $this->assertNotNull($customer->next_return_at);
         $this->assertTrue($customer->next_return_at->isSameDay(now()->addMonths(2)));
+    }
+
+    public function test_completing_an_appointment_asks_for_confirmation_before_changing_status(): void
+    {
+        [$company, $user] = $this->company();
+        $this->actingAs($user);
+        Filament::setCurrentPanel('company');
+        [$customer, $pet, $service] = $this->petData($company);
+        $appointment = Appointment::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $customer->id,
+            'pet_id' => $pet->id,
+            'service_id' => $service->id,
+            'scheduled_at' => now()->next('monday')->setTime(10, 0),
+            'status' => 'scheduled',
+        ]);
+
+        Livewire::test(EditAppointment::class, ['record' => $appointment->getRouteKey()])
+            ->mountAction('concluir')
+            ->assertMountedActionModalSee('Concluir atendimento')
+            ->assertMountedActionModalSee('O crédito do pacote, se houver, é baixado agora.');
+
+        $this->assertSame('scheduled', $appointment->fresh()->status);
+
+        Livewire::test(ListAppointments::class)
+            ->mountTableAction('concluir', $appointment)
+            ->assertMountedActionModalSee('Concluir atendimento');
+
+        $this->assertSame('scheduled', $appointment->fresh()->status);
+
+        Livewire::test(EditAppointment::class, ['record' => $appointment->getRouteKey()])
+            ->callAction('concluir');
+
+        $this->assertSame('completed', $appointment->fresh()->status);
     }
 
     public function test_scheduled_appointment_can_be_completed_without_a_previous_confirmation(): void

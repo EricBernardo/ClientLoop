@@ -21,14 +21,22 @@ class EditAppointment extends EditRecord
         $record = $this->getRecord();
 
         return [
-            Action::make('concluir')->label('Concluir atendimento')->color('success')->icon('heroicon-o-check-circle')->visible(in_array($record->status, ['scheduled', 'confirmed'], true))->action(function () use ($record): void {
-                try {
-                    app(AppointmentService::class)->complete($record);
-                    $this->redirect(AppointmentResource::getUrl('edit', ['record' => $record->fresh()]));
-                } catch (ValidationException $exception) {
-                    $this->showFriendlyValidation($exception);
-                }
-            }),
+            Action::make('concluir')
+                ->label('Concluir atendimento')
+                ->color('success')
+                ->icon('heroicon-o-check-circle')
+                ->requiresConfirmation()
+                ->modalHeading('Concluir atendimento')
+                ->modalDescription('O crédito do pacote, se houver, é baixado agora. Se o serviço tem retorno em meses, a data prevista vai para o responsável.')
+                ->visible(in_array($record->status, ['scheduled', 'confirmed'], true))
+                ->action(function () use ($record): void {
+                    try {
+                        app(AppointmentService::class)->complete($record);
+                        $this->redirect(AppointmentResource::getUrl('edit', ['record' => $record->fresh()]));
+                    } catch (ValidationException $exception) {
+                        $this->showFriendlyValidation($exception);
+                    }
+                }),
             Action::make('falta')
                 ->label('Falta')
                 ->color('danger')

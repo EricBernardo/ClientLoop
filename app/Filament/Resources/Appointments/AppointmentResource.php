@@ -173,15 +173,23 @@ class AppointmentResource extends Resource
                 SelectFilter::make('status')->options(['scheduled' => 'Agendado', 'confirmed' => 'Confirmado', 'reschedule_requested' => 'Alteração solicitada', 'cancelled' => 'Cancelado', 'no_show' => 'Não compareceu', 'completed' => 'Concluído'])->searchable(),
             ])
             ->recordActions([
-                Action::make('concluir')->label('Concluir atendimento')->color('success')->icon('heroicon-o-check-circle')->visible(fn (Appointment $record): bool => in_array($record->status, ['scheduled', 'confirmed'], true))->action(function (Appointment $record): void {
-                    try {
-                        app(AppointmentService::class)->complete($record);
-                        $record->refresh();
-                        Notification::make()->success()->title('Atendimento concluído')->send();
-                    } catch (ValidationException $exception) {
-                        Notification::make()->danger()->title('Não foi possível concluir o atendimento')->body(collect($exception->errors())->flatten()->first())->send();
-                    }
-                }),
+                Action::make('concluir')
+                    ->label('Concluir atendimento')
+                    ->color('success')
+                    ->icon('heroicon-o-check-circle')
+                    ->requiresConfirmation()
+                    ->modalHeading('Concluir atendimento')
+                    ->modalDescription('O crédito do pacote, se houver, é baixado agora. Se o serviço tem retorno em meses, a data prevista vai para o responsável.')
+                    ->visible(fn (Appointment $record): bool => in_array($record->status, ['scheduled', 'confirmed'], true))
+                    ->action(function (Appointment $record): void {
+                        try {
+                            app(AppointmentService::class)->complete($record);
+                            $record->refresh();
+                            Notification::make()->success()->title('Atendimento concluído')->send();
+                        } catch (ValidationException $exception) {
+                            Notification::make()->danger()->title('Não foi possível concluir o atendimento')->body(collect($exception->errors())->flatten()->first())->send();
+                        }
+                    }),
                 Action::make('desfazerConclusao')
                     ->label('Desfazer conclusão')
                     ->color('warning')
