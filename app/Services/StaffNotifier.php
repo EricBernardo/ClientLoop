@@ -15,6 +15,20 @@ use Filament\Notifications\Notification;
 
 class StaffNotifier
 {
+    public function appointmentRequested(Appointment $appointment): void
+    {
+        $this->send($appointment->company_id, Notification::make()
+            ->title('Novo horário pelo link')
+            ->info()
+            ->body($this->appointmentSummary($appointment))
+            ->actions([
+                Action::make('open')
+                    ->label('Abrir horário')
+                    ->button()
+                    ->url(AppointmentResource::getUrl('edit', ['record' => $appointment], panel: 'company')),
+            ]));
+    }
+
     public function appointmentConfirmed(Appointment $appointment): void
     {
         $this->send($appointment->company_id, Notification::make()

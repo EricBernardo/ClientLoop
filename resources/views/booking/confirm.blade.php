@@ -23,7 +23,9 @@
     <p>Situação: {{ \App\Support\InterfaceLabels::appointmentStatus($appointment->status) }}</p>
     @if(in_array($appointment->status, ['scheduled', 'confirmed', 'reschedule_requested'], true))
         <div class="actions">
-            <form method="post" action="{{ route('appointment.confirm.submit', $appointment->confirmation_token) }}">@csrf<button class="confirm" type="submit">Confirmar</button></form>
+            @if(in_array($appointment->status, ['scheduled', 'reschedule_requested'], true))
+                <form method="post" action="{{ route('appointment.confirm.submit', $appointment->confirmation_token) }}">@csrf<button class="confirm" type="submit">Confirmar</button></form>
+            @endif
             <form method="post" action="{{ route('appointment.confirm.cancel', $appointment->confirmation_token) }}">@csrf<button class="cancel" type="submit">Cancelar</button></form>
         </div>
     @endif

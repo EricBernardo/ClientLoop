@@ -107,7 +107,7 @@ class CamadaQuatroSeisTest extends TestCase
 
     public function test_public_booking_and_confirmation_links_work(): void
     {
-        [$company, , $customer, $pet, $service] = $this->baseContext();
+        [$company, $user, $customer, $pet, $service] = $this->baseContext();
         $company->forceFill(['public_booking_token' => 'booking-token'])->saveQuietly();
 
         $this->get('/book/booking-token')->assertOk()->assertSee($company->name);
@@ -123,10 +123,57 @@ class CamadaQuatroSeisTest extends TestCase
         $appointment = Appointment::withoutGlobalScopes()->where('company_id', $company->id)->whereHas('pet', fn ($q) => $q->where('name', 'Bob'))->first();
         $this->assertNotNull($appointment);
         $this->assertNotNull($appointment->confirmation_token);
+        $this->assertSame('5511988887777', $appointment->customer->phone);
+        $this->assertSame(['Novo horário pelo link'], $user->notifications->map(fn ($notification): string => $notification->data['title'])->all());
 
         $this->get('/confirm/'.$appointment->confirmation_token)->assertOk();
         $this->post('/confirm/'.$appointment->confirmation_token)->assertRedirect();
         $this->assertSame('confirmed', $appointment->fresh()->status);
+    }
+
+    public function test_public_booking_inside_the_window_creates_a_confirmation_task(): void
+    {
+        [$company, , , , $service] = $this->baseContext();
+        $company->forceFill(['public_booking_token' => 'booking-token'])->saveQuietly();
+
+        $this->post('/book/booking-token', [
+            'customer_name' => 'Nova tutora',
+            'customer_phone' => '11977776666',
+            'pet_name' => 'Mel',
+            'service_id' => $service->id,
+            'scheduled_at' => now()->setTime(11, 0)->format('Y-m-d\TH:i'),
+        ])->assertRedirect();
+
+        $appointment = Appointment::withoutGlobalScopes()->where('company_id', $company->id)->whereHas('pet', fn ($query) => $query->where('name', 'Mel'))->firstOrFail();
+        $this->assertDatabaseHas('contact_tasks', [
+            'appointment_id' => $appointment->id,
+            'type' => 'confirmation',
+            'status' => 'pending',
+            'cycle_key' => 'appointment:'.$appointment->id,
+        ]);
+    }
+
+    public function test_public_booking_link_reuses_the_customer_from_the_message(): void
+    {
+        [$company, , $customer, , $service] = $this->baseContext();
+        $company->forceFill(['public_booking_token' => 'booking-token'])->saveQuietly();
+
+        $this->get('/book/booking-token?customer_id='.$customer->id)
+            ->assertOk()
+            ->assertSee($customer->name)
+            ->assertSee($customer->phone);
+
+        $this->post('/book/booking-token', [
+            'customer_id' => $customer->id,
+            'customer_name' => 'Outro nome',
+            'customer_phone' => '11966665555',
+            'pet_name' => 'Luna',
+            'service_id' => $service->id,
+            'scheduled_at' => now()->next(Carbon::WEDNESDAY)->setTime(15, 0)->format('Y-m-d\TH:i'),
+        ])->assertRedirect();
+
+        $this->assertSame(1, Customer::withoutGlobalScopes()->where('company_id', $company->id)->count());
+        $this->assertSame($customer->id, Appointment::withoutGlobalScopes()->where('company_id', $company->id)->whereHas('pet', fn ($query) => $query->where('name', 'Luna'))->value('customer_id'));
     }
 
     public function test_waitlist_entry_can_be_stored(): void

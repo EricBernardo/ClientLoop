@@ -21,11 +21,14 @@
     @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
     <form method="post" action="{{ route('booking.store', $company->public_booking_token) }}">
         @csrf
+        @if($customer)
+            <input type="hidden" name="customer_id" value="{{ $customer->id }}">
+        @endif
         <label>Seu nome</label>
-        <input name="customer_name" value="{{ old('customer_name') }}" required>
+        <input name="customer_name" value="{{ old('customer_name', $customer?->name) }}" required>
         @error('customer_name')<div class="error">{{ $message }}</div>@enderror
         <label>WhatsApp</label>
-        <input name="customer_phone" value="{{ old('customer_phone') }}" required placeholder="11999999999">
+        <input name="customer_phone" value="{{ old('customer_phone', $customer?->phone) }}" required placeholder="11999999999">
         @error('customer_phone')<div class="error">{{ $message }}</div>@enderror
         <label>Nome do pet</label>
         <input name="pet_name" value="{{ old('pet_name') }}" required>

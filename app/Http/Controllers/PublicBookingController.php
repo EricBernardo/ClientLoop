@@ -7,11 +7,17 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Pet;
 use App\Models\Service;
+use App\Services\ContactTaskService;
+use App\Services\PhoneNormalizer;
+use App\Services\QuotaService;
+use App\Services\StaffNotifier;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class PublicBookingController extends Controller
 {
@@ -19,14 +25,19 @@ class PublicBookingController extends Controller
     {
         $company = Company::query()->where('public_booking_token', $token)->whereIn('status', ['trial', 'active'])->firstOrFail();
 
+        $customer = null;
+        if (filled(request('customer_id'))) {
+            $customer = Customer::withoutGlobalScopes()->where('company_id', $company->id)->whereKey(request('customer_id'))->first();
+        }
+
         return view('booking.public', [
             'company' => $company,
             'services' => Service::withoutGlobalScopes()->where('company_id', $company->id)->where('active', true)->orderBy('name')->get(),
-            'customerId' => request('customer_id'),
+            'customer' => $customer,
         ]);
     }
 
-    public function store(Request $request, string $token)
+    public function store(Request $request, string $token, QuotaService $quota, StaffNotifier $notifier, ContactTaskService $tasks)
     {
         $company = Company::query()->where('public_booking_token', $token)->whereIn('status', ['trial', 'active'])->firstOrFail();
 
@@ -36,14 +47,20 @@ class PublicBookingController extends Controller
             'pet_name' => ['required', 'string', 'max:255'],
             'service_id' => ['required', 'integer'],
             'scheduled_at' => ['required', 'date'],
+            'customer_id' => ['nullable', 'integer'],
         ]);
 
-        $service = Service::withoutGlobalScopes()->where('company_id', $company->id)->whereKey($data['service_id'])->where('active', true)->firstOrFail();
+        try {
+            $phone = app(PhoneNormalizer::class)->normalize($data['customer_phone']);
+        } catch (InvalidArgumentException $exception) {
+            return back()->withInput()->withErrors(['customer_phone' => $exception->getMessage()]);
+        }
 
-        $customer = Customer::withoutGlobalScopes()->firstOrCreate(
-            ['company_id' => $company->id, 'phone' => preg_replace('/\D+/', '', $data['customer_phone'])],
-            ['name' => $data['customer_name']],
-        );
+        $service = Service::withoutGlobalScopes()->where('company_id', $company->id)->whereKey($data['service_id'])->where('active', true)->firstOrFail();
+        $customer = $this->resolveCustomer($company, $data, $phone, $quota);
+        if ($customer instanceof RedirectResponse) {
+            return $customer;
+        }
 
         $pet = Pet::withoutGlobalScopes()->firstOrCreate(
             ['company_id' => $company->id, 'customer_id' => $customer->id, 'name' => $data['pet_name']],
@@ -65,6 +82,55 @@ class PublicBookingController extends Controller
             return back()->withInput()->withErrors($exception->errors());
         }
 
+        $notifier->appointmentRequested($appointment);
+        $this->queueConfirmation($company, $customer, $appointment, $service, $pet, $tasks);
+
         return redirect()->route('booking.show', $token)->with('status', 'Horário solicitado com sucesso. A loja vai confirmar pelo WhatsApp.');
+    }
+
+    /**
+     * @param  array{customer_name: string, customer_phone: string, customer_id?: int|null}  $data
+     */
+    private function resolveCustomer(Company $company, array $data, string $phone, QuotaService $quota): Customer|RedirectResponse
+    {
+        if (filled($data['customer_id'] ?? null)) {
+            $linked = Customer::withoutGlobalScopes()->where('company_id', $company->id)->whereKey($data['customer_id'])->first();
+            if ($linked) {
+                return $linked;
+            }
+        }
+
+        $existing = Customer::withoutGlobalScopes()->where('company_id', $company->id)->where('phone', $phone)->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        try {
+            $quota->consumeContact($company);
+        } catch (ValidationException $exception) {
+            return back()->withInput()->withErrors($exception->errors());
+        }
+
+        return Customer::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'phone' => $phone,
+            'name' => $data['customer_name'],
+        ]);
+    }
+
+    private function queueConfirmation(Company $company, Customer $customer, Appointment $appointment, Service $service, Pet $pet, ContactTaskService $tasks): void
+    {
+        $hours = $company->confirmation_hours ?: 24;
+        $scheduledAt = $appointment->scheduled_at;
+        if ($scheduledAt->lt(now()) || $scheduledAt->gt(now()->copy()->addHours($hours))) {
+            return;
+        }
+
+        $tasks->create($company, $customer, 'confirmation', $scheduledAt->copy()->subHours($hours), [
+            'appointment' => $appointment,
+            'service' => $service,
+            'pet' => $pet,
+            'cycle_key' => 'appointment:'.$appointment->id,
+        ]);
     }
 }

@@ -147,6 +147,24 @@ class ContactTaskFlowTest extends TestCase
         $this->assertSame(1, $task->attempts()->where('outcome', 'no_response')->count());
     }
 
+    public function test_public_confirmation_completes_the_pending_task(): void
+    {
+        [$company, $user, $customer, $appointment] = $this->confirmationContext();
+        $this->actingAs($user);
+        $appointment->forceFill(['confirmation_token' => 'token-publico'])->save();
+        $task = app(ContactTaskService::class)->create($company, $customer, 'confirmation', now(), [
+            'appointment' => $appointment,
+            'cycle_key' => 'appointment:'.$appointment->id,
+        ]);
+
+        $this->post('/confirm/token-publico')->assertRedirect();
+
+        $this->assertSame('completed', $task->fresh()->status);
+        $this->assertSame('confirmed', $task->fresh()->outcome);
+        $this->assertSame('confirmed', $appointment->fresh()->status);
+        $this->assertSame(0, ContactTask::query()->where('appointment_id', $appointment->id)->where('status', 'pending')->count());
+    }
+
     public function test_confirmation_message_includes_public_confirmation_link(): void
     {
         [$company, $user, $customer, $appointment] = $this->confirmationContext();
