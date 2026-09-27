@@ -67,9 +67,9 @@ Se o seed rodou (`php artisan migrate --seed` ou equivalente):
 
 | Papel | URL | E-mail | Senha |
 |---|---|---|---|
-| Dona da loja (Pet Shop Patinhas) | `/admin` | `demo@clientloop.test` | `clientloop123` |
-| Atendente | `/admin` | `atendente@clientloop.test` | `clientloop123` |
-| Superadmin da plataforma | `/platform` | `admin@clientloop.test` | `clientloop123` |
+| Dona da loja (Pet Shop Patinhas) | `/admin` | `demo@clientloop.test` | `password` |
+| Atendente | `/admin` | `atendente@clientloop.test` | `password` |
+| Superadmin da plataforma | `/platform` | `admin@clientloop.test` | `password` |
 
 O que a demo já deixa pronto está no [apêndice](#apendice-a-o-que-a-demo-ja-cria).
 
@@ -572,9 +572,9 @@ Empresa **Pet Shop Patinhas**, no ClientLoop há **~1 ano e meio** (assinatura d
 
 | Papel | URL | E-mail | Senha |
 |---|---|---|---|
-| Dona da loja (desde o início) | `/admin` | `demo@clientloop.test` | `clientloop123` |
-| Atendente (entrou ~há 8 meses) | `/admin` | `atendente@clientloop.test` | `clientloop123` |
-| Superadmin | `/platform` | `admin@clientloop.test` | `clientloop123` |
+| Dona da loja (desde o início) | `/admin` | `demo@clientloop.test` | `password` |
+| Atendente (entrou ~há 8 meses) | `/admin` | `atendente@clientloop.test` | `password` |
+| Superadmin | `/platform` | `admin@clientloop.test` | `password` |
 
 **Tosadores:** Marina (desde o início) e Paula (mesma época da atendente).
 
@@ -649,7 +649,7 @@ php artisan clientloop:expire-trials
 
 No Docker do projeto, o scheduler dispara a geração de tarefas **de hora em hora**. Só empresas `trial` ou `active`.
 
-**Painel `/platform`** (superadmin): empresas (status, plano) e planos (limites). Antecedência de confirmação e meses de reativação também podem ser ajustados pela loja em **Horários e regras**. Conta superadmin da demo: `admin@clientloop.test` / `clientloop123`.
+**Painel `/platform`** (superadmin): empresas (status, plano) e planos (limites). Antecedência de confirmação e meses de reativação também podem ser ajustados pela loja em **Horários e regras**. Conta superadmin da demo: `admin@clientloop.test` / `password`.
 
 Lista de agendamentos: `/admin/appointments`.  
 Fila de contatos: `/admin/contact-tasks` (também pelos cards).

@@ -92,38 +92,60 @@ class AppointmentResource extends Resource
                         $set('duration_minutes', $service->duration_minutes);
                     }
                 })->required(),
-                Select::make('pet_package_id')->label('Pacote (opcional)')->options(function (Get $get): array {
-                    $petId = $get('pet_id');
-                    $serviceId = $get('service_id');
+                Select::make('pet_package_id')
+                    ->label('Pacote (opcional)')
+                    ->options(function (Get $get): array {
+                        $petId = $get('pet_id');
+                        $serviceId = $get('service_id');
 
-                    if (blank($petId) || blank($serviceId)) {
-                        return [];
-                    }
+                        if (blank($petId) || blank($serviceId)) {
+                            return [];
+                        }
 
-                    return PetPackage::query()->with('pet')->where('payment_status', 'paid')->where('pet_id', $petId)->get()->filter(fn (PetPackage $package): bool => $package->isUsableFor((int) $petId, $serviceId))->mapWithKeys(fn (PetPackage $package): array => [$package->id => $package->name.' — próxima etapa: '.app(PackageService::class)->nextItem($package)?->service_name])->all();
-                })->searchable()->preload()->disabled(fn (Get $get): bool => blank($get('pet_id')) || blank($get('service_id')))->default(fn (): ?string => request('pet_package_id'))->helperText(function (Get $get): string {
-                    $petId = $get('pet_id');
-                    $serviceId = $get('service_id');
-                    $selected = $get('pet_package_id');
-
-                    if (blank($petId) || blank($serviceId)) {
-                        return 'Escolha pet e serviço para ver os pacotes compatíveis.';
-                    }
-
-                    if (blank($selected)) {
-                        $hasUsable = PetPackage::query()
+                        return PetPackage::query()
                             ->where('payment_status', 'paid')
                             ->where('pet_id', $petId)
                             ->get()
-                            ->contains(fn (PetPackage $package): bool => $package->isUsableFor((int) $petId, $serviceId));
+                            ->filter(fn (PetPackage $package): bool => $package->isUsableFor((int) $petId, (int) $serviceId))
+                            ->mapWithKeys(fn (PetPackage $package): array => [$package->id => self::packageOptionLabel($package)])
+                            ->all();
+                    })
+                    ->getOptionLabelUsing(fn (mixed $value): ?string => self::packageOptionLabel(
+                        blank($value) ? null : PetPackage::query()->find($value),
+                    ))
+                    ->searchable()
+                    ->preload()
+                    ->disabled(fn (Get $get): bool => blank($get('pet_id')) || blank($get('service_id')))
+                    ->default(fn (): ?string => request('pet_package_id'))
+                    ->helperText(function (Get $get): string {
+                        $petId = $get('pet_id');
+                        $serviceId = $get('service_id');
+                        $selected = $get('pet_package_id');
 
-                        if ($hasUsable) {
-                            return 'Atenção: este pet tem pacote utilizável. Selecione o pacote para baixar o crédito na conclusão.';
+                        if (blank($petId) || blank($serviceId)) {
+                            return 'Escolha pet e serviço para ver os pacotes compatíveis.';
                         }
-                    }
 
-                    return 'Escolha pet e serviço para ver os pacotes compatíveis.';
-                }),
+                        if (blank($selected)) {
+                            $hasUsable = PetPackage::query()
+                                ->where('payment_status', 'paid')
+                                ->where('pet_id', $petId)
+                                ->get()
+                                ->contains(fn (PetPackage $package): bool => $package->isUsableFor((int) $petId, (int) $serviceId));
+
+                            if ($hasUsable) {
+                                return 'Atenção: este pet tem pacote utilizável. Selecione o pacote para baixar o crédito na conclusão.';
+                            }
+                        }
+
+                        $package = blank($selected) ? null : PetPackage::query()->find($selected);
+
+                        if ($package && app(PackageService::class)->nextItem($package) === null) {
+                            return 'Este pacote já foi utilizado por completo.';
+                        }
+
+                        return 'Escolha pet e serviço para ver os pacotes compatíveis.';
+                    }),
                 Select::make('groomer_id')
                     ->label('Tosador')
                     ->options(fn (): array => Groomer::query()->where('active', true)->orderBy('name')->pluck('name', 'id')->all())
@@ -272,6 +294,21 @@ class AppointmentResource extends Resource
             'create' => CreateAppointment::route('/create'),
             'edit' => EditAppointment::route('/{record}/edit'),
         ];
+    }
+
+    private static function packageOptionLabel(?PetPackage $package): ?string
+    {
+        if (! $package) {
+            return null;
+        }
+
+        $nextItem = app(PackageService::class)->nextItem($package);
+
+        if ($nextItem) {
+            return $package->name.' — próxima etapa: '.$nextItem->service_name;
+        }
+
+        return $package->name.' — pacote utilizado';
     }
 
     public static function nextPackageAppointmentUrl(Appointment $appointment): ?string

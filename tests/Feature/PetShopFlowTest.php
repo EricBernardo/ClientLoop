@@ -153,6 +153,42 @@ class PetShopFlowTest extends TestCase
         $this->assertSame('completed', $appointment->fresh()->status);
     }
 
+    public function test_edit_appointment_shows_the_next_package_step_while_credits_remain(): void
+    {
+        [$company, $user] = $this->company();
+        $this->actingAs($user);
+        Filament::setCurrentPanel('company');
+        [$customer, $pet, $service] = $this->petData($company);
+        $offer = PackageOffer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => '4 banhos', 'credits' => 2, 'suggested_price' => 80, 'active' => true]);
+        foreach (range(1, 2) as $position) {
+            PackageOfferItem::withoutGlobalScopes()->create(['company_id' => $company->id, 'package_offer_id' => $offer->id, 'service_id' => $service->id, 'position' => $position]);
+        }
+        $package = PetPackage::withoutGlobalScopes()->create(['company_id' => $company->id, 'pet_id' => $pet->id, 'package_offer_id' => $offer->id, 'payment_status' => 'paid', 'purchased_at' => today()]);
+        $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'pet_id' => $pet->id, 'service_id' => $service->id, 'pet_package_id' => $package->id, 'scheduled_at' => now()->next('monday')->setTime(10, 0), 'status' => 'confirmed']);
+
+        Livewire::test(EditAppointment::class, ['record' => $appointment->getRouteKey()])
+            ->assertSee('4 banhos — próxima etapa: Banho', false)
+            ->assertDontSee('pacote utilizado', false);
+    }
+
+    public function test_edit_appointment_shows_the_package_name_when_every_credit_is_used(): void
+    {
+        [$company, $user] = $this->company();
+        $this->actingAs($user);
+        Filament::setCurrentPanel('company');
+        [$customer, $pet, $service] = $this->petData($company);
+        $offer = PackageOffer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => '4 banhos', 'credits' => 1, 'suggested_price' => 40, 'active' => true]);
+        PackageOfferItem::withoutGlobalScopes()->create(['company_id' => $company->id, 'package_offer_id' => $offer->id, 'service_id' => $service->id, 'position' => 1]);
+        $package = PetPackage::withoutGlobalScopes()->create(['company_id' => $company->id, 'pet_id' => $pet->id, 'package_offer_id' => $offer->id, 'payment_status' => 'paid', 'purchased_at' => today()]);
+        $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'pet_id' => $pet->id, 'service_id' => $service->id, 'pet_package_id' => $package->id, 'scheduled_at' => now()->next('monday')->setTime(10, 0), 'status' => 'confirmed']);
+
+        app(AppointmentService::class)->complete($appointment);
+
+        Livewire::test(EditAppointment::class, ['record' => $appointment->getRouteKey()])
+            ->assertSee('4 banhos — pacote utilizado', false)
+            ->assertSee('Este pacote já foi utilizado por completo.', false);
+    }
+
     public function test_scheduled_appointment_can_be_completed_without_a_previous_confirmation(): void
     {
         [$company, $user] = $this->company();

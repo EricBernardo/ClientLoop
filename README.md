@@ -13,9 +13,9 @@ Contas do seed:
 
 | Papel | URL | E-mail | Senha |
 |---|---|---|---|
-| Dona da loja | `/admin` | `demo@clientloop.test` | `clientloop123` |
-| Atendente | `/admin` | `atendente@clientloop.test` | `clientloop123` |
-| Superadmin | `/platform` | `admin@clientloop.test` | `clientloop123` |
+| Dona da loja | `/admin` | `demo@clientloop.test` | `password` |
+| Atendente | `/admin` | `atendente@clientloop.test` | `password` |
+| Superadmin | `/platform` | `admin@clientloop.test` | `password` |
 
 Link público da demo: `/book/patinhas-demo-booking` (empresa com ~18 meses de histórico no seed).
 
