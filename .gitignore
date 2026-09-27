@@ -21,6 +21,7 @@
 /public/hot
 /public/videos/*
 !/public/videos/.gitkeep
+!/public/videos/*.mp4
 /public/js/filament
 /public/storage
 /storage/*.key
