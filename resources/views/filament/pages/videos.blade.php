@@ -28,7 +28,7 @@
                         </div>
                     @else
                         <div class="videos-missing">
-                            Ainda sem mídia. A narração fica em <code>storage/app/public/videos/{{ $video['audioFile'] }}</code> e a gravação da tela em <code>storage/app/public/videos/{{ $video['file'] }}</code>.
+                            Ainda sem mídia. A narração fica em <code>public/videos/{{ $video['audioFile'] }}</code> e a gravação da tela em <code>public/videos/{{ $video['file'] }}</code>.
                         </div>
                     @endif
                 </article>

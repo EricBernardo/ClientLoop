@@ -19,6 +19,8 @@
 /public/fonts-manifest.dev.json
 /public/fonts/filament
 /public/hot
+/public/videos/*
+!/public/videos/.gitkeep
 /public/js/filament
 /public/storage
 /storage/*.key

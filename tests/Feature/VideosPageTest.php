@@ -23,7 +23,7 @@ class VideosPageTest extends TestCase
     {
         [, $user] = $this->company();
         $this->actingAs($user);
-        Storage::fake('public');
+        Storage::fake('videos');
 
         $this->get('/admin/videos')
             ->assertSee('O que o ClientLoop faz')
@@ -34,8 +34,8 @@ class VideosPageTest extends TestCase
             ->assertSee('Confirmar pelo WhatsApp')
             ->assertSee('Concluir, faltar, cancelar e marcar a próxima visita')
             ->assertSee('O que o painel acompanha depois')
-            ->assertSee('storage/app/public/videos/01-o-que-o-clientloop-faz.mp3')
-            ->assertSee('storage/app/public/videos/01-o-que-o-clientloop-faz.mp4')
+            ->assertSee('public/videos/01-o-que-o-clientloop-faz.mp3')
+            ->assertSee('public/videos/01-o-que-o-clientloop-faz.mp4')
             ->assertDontSee('<video', false)
             ->assertDontSee('<audio', false);
     }
@@ -44,30 +44,30 @@ class VideosPageTest extends TestCase
     {
         [, $user] = $this->company();
         $this->actingAs($user);
-        Storage::fake('public');
-        Storage::disk('public')->put('videos/01-o-que-o-clientloop-faz.mp4', 'video');
+        Storage::fake('videos');
+        Storage::disk('videos')->put('01-o-que-o-clientloop-faz.mp4', 'video');
 
         $this->get('/admin/videos')
             ->assertSee('<video', false)
             ->assertDontSee('<audio', false)
             ->assertSee('01-o-que-o-clientloop-faz.mp4', false)
-            ->assertSee('storage/app/public/videos/02-horarios-e-servicos.mp4');
+            ->assertSee('public/videos/02-horarios-e-servicos.mp4');
     }
 
     public function test_videos_page_plays_the_narration_until_the_screen_recording_exists(): void
     {
         [, $user] = $this->company();
         $this->actingAs($user);
-        Storage::fake('public');
-        Storage::disk('public')->put('videos/01-o-que-o-clientloop-faz.mp3', 'audio');
-        Storage::disk('public')->put('videos/01-o-que-o-clientloop-faz.mp4', 'video');
-        Storage::disk('public')->put('videos/02-horarios-e-servicos.mp3', 'audio');
+        Storage::fake('videos');
+        Storage::disk('videos')->put('01-o-que-o-clientloop-faz.mp3', 'audio');
+        Storage::disk('videos')->put('01-o-que-o-clientloop-faz.mp4', 'video');
+        Storage::disk('videos')->put('02-horarios-e-servicos.mp3', 'audio');
 
         $this->get('/admin/videos')
             ->assertSee('<video', false)
             ->assertSee('<audio', false)
             ->assertSee('02-horarios-e-servicos.mp3', false)
-            ->assertDontSee('storage/app/public/videos/01-o-que-o-clientloop-faz.mp3');
+            ->assertDontSee('public/videos/01-o-que-o-clientloop-faz.mp3');
     }
 
     /** @return array{Company, User} */

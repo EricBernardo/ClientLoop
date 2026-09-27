@@ -75,13 +75,13 @@ class Videos extends Page
      */
     protected function getViewData(): array
     {
-        $disk = Storage::disk('public');
+        $disk = Storage::disk('videos');
         $videos = [];
 
         foreach (self::catalog() as $video) {
-            $videoPath = 'videos/'.$video['file'];
             $audioFile = str_replace('.mp4', '.mp3', $video['file']);
-            $audioPath = 'videos/'.$audioFile;
+            $videoPath = $video['file'];
+            $audioPath = $audioFile;
 
             $videos[] = [
                 ...$video,

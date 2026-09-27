@@ -4,7 +4,7 @@ Série para a página de vídeos. Cada vídeo mostra um trecho do uso do sistema
 
 Grave com uma loja de demonstração já preparada: um responsável, um pet, o serviço Banho e um pacote pago. Em cada clique, pare cerca de um segundo. Cole na IA só o texto da narração. Peça voz em português do Brasil, tom calmo, ritmo de explicação, sem música.
 
-São oito vídeos, na ordem em que a pessoa usa o ClientLoop. Cada um fica entre um minuto e um minuto e meio. A página do painel é **Vídeos** (`/admin/videos`). Salve cada arquivo em `storage/app/public/videos/` com o nome abaixo. Se o player não abrir, rode `php artisan storage:link`.
+São oito vídeos, na ordem em que a pessoa usa o ClientLoop. Cada um fica entre um minuto e um minuto e meio. A página do painel é **Vídeos** (`/admin/videos`). Salve cada arquivo em `public/videos/` com o nome abaixo. A narração toca sozinha. Quando o `.mp4` da mesma aula existir, a gravação da tela ocupa o lugar do áudio.
 
 | Vídeo | Narração | Gravação da tela |
 | --- | --- | --- |
