@@ -45,6 +45,7 @@
                     <div class="task"><span>Confirmar Mel · WhatsApp</span><em>Pendente</em></div>
                     <div class="task"><span>Link do tutor · horário solicitado</span><em>Novo</em></div>
                     <div class="task"><span>Remarcar falta do Bob</span><em>Retorno</em></div>
+                    <div class="task"><span>Pacote do Thor acabou · renovar</span><em>Fila</em></div>
                     <div class="task"><span>Sino · Nina confirmou presença</span><em>Agora</em></div>
                 </aside>
             </section>
@@ -60,12 +61,12 @@
                 <article class="card">
                     <div class="icon">◷</div>
                     <h3>Agenda com regras reais</h3>
-                    <p>Expediente, intervalos de 15/30/60 min, almoço bloqueado, recorrência semanal e vários tosadores no mesmo horário.</p>
+                    <p>Expediente, intervalos de 15/30/60 min, almoço bloqueado, recorrência semanal e vários tosadores no mesmo horário. No serviço, o retorno previsto em meses marca a próxima visita.</p>
                 </article>
                 <article class="card">
                     <div class="icon">▣</div>
                     <h3>Pacotes em sequência</h3>
-                    <p>Venda “4 banhos”, baixe crédito só ao concluir, transfira saldo entre pets, renove quando acabar e desfaça conclusão se errou.</p>
+                    <p>Venda “4 banhos”, baixe crédito só ao concluir, transfira saldo entre pets e desfaça a conclusão se errou. O último crédito abre um contato de renovação na fila.</p>
                 </article>
                 <article class="card">
                     <div class="icon">✓</div>
@@ -75,7 +76,7 @@
                 <article class="card">
                     <div class="icon">◎</div>
                     <h3>Link para o tutor</h3>
-                    <p>Página pública de agendamento e link de confirmar/cancelar presença — o responsável responde sem você digitar tudo de novo.</p>
+                    <p>Página pública de agendamento e link de confirmar ou cancelar a presença. O pedido do tutor entra na agenda e a confirmação segue na fila de WhatsApp.</p>
                 </article>
                 <article class="card">
                     <div class="icon">☰</div>
