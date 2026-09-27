@@ -77,6 +77,27 @@ class EnsureDemoDataTest extends TestCase
         $this->get('/book/patinhas-demo-booking')->assertOk()->assertSee('Pet Shop Patinhas');
     }
 
+    public function test_demo_seeder_keeps_eighteen_months_of_staff_notifications(): void
+    {
+        $this->seed(DemoClinicSeeder::class);
+
+        $owner = User::query()->where('email', 'demo@clientloop.test')->firstOrFail();
+        $attendant = User::query()->where('email', 'atendente@clientloop.test')->firstOrFail();
+        $admin = User::query()->where('email', 'admin@clientloop.test')->firstOrFail();
+        $ownerNotes = $owner->notifications()->get();
+        $firstImport = $ownerNotes->first(fn ($notification): bool => ($notification->data['title'] ?? null) === 'Importação concluída');
+
+        $this->assertGreaterThanOrEqual(8, $ownerNotes->count());
+        $this->assertNotNull($firstImport);
+        $this->assertTrue($firstImport->created_at->lte(now()->subMonths(15)));
+        $this->assertNotNull($firstImport->read_at);
+        $this->assertSame('filament', $firstImport->data['format']);
+        $this->assertGreaterThanOrEqual(2, $owner->unreadNotifications()->count());
+        $this->assertSame(0, $attendant->notifications()->where('created_at', '<', $attendant->created_at)->count());
+        $this->assertGreaterThan(0, $attendant->notifications()->count());
+        $this->assertSame(0, $admin->notifications()->count());
+    }
+
     public function test_demo_seeder_fills_every_company_overview_card(): void
     {
         $this->seed(DemoClinicSeeder::class);

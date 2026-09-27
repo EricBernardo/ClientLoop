@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Filament\Resources\Appointments\AppointmentResource;
 use App\Models\ActivityLog;
 use App\Models\Appointment;
 use App\Models\Campaign;
@@ -24,7 +25,11 @@ use App\Models\User;
 use App\Models\WaitlistEntry;
 use App\Services\DefaultMessageTemplateService;
 use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Notifications\DatabaseNotification as FilamentDatabaseNotification;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Seeder;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -399,6 +404,8 @@ class DemoClinicSeeder extends Seeder
         $responsibles['Ana Beatriz Lima']->update(['next_return_at' => null, 'last_activity_at' => $lastBusinessDay]);
         $responsibles['João Pedro Martins']->update(['last_activity_at' => now()->subMonths(9)]);
         $responsibles['Ricardo Mendes']->update(['next_return_at' => now()->subDays(5)]);
+
+        $this->seedStaffNotifications($owner, $attendant, $openedAt, $appointments);
     }
 
     private function purgeTransientData(Company $company): void
@@ -596,6 +603,59 @@ class DemoClinicSeeder extends Seeder
             ]);
             $cursor->addMonth();
             $monthIndex++;
+        }
+    }
+
+    /**
+     * @param  Collection<string, Appointment>  $appointments
+     */
+    private function seedStaffNotifications(User $owner, User $attendant, Carbon $openedAt, Collection $appointments): void
+    {
+        DatabaseNotification::query()
+            ->where('notifiable_type', User::class)
+            ->whereIn('notifiable_id', [$owner->id, $attendant->id])
+            ->delete();
+
+        $winter = $openedAt->copy()->addMonths(12)->setTime(10, 0);
+        $samples = [
+            [$openedAt->copy()->addMonths(2)->setTime(11, 0), 'Importação concluída', 'success', '2 responsáveis criados, 0 atualizados.', true, null],
+            [$openedAt->copy()->addMonths(5)->setTime(9, 20), 'Presença confirmada', 'success', 'Thor (Ana Beatriz Lima) em '.$openedAt->copy()->addMonths(5)->format('d/m/Y').' 09:00.', true, null],
+            [$openedAt->copy()->addMonths(8)->setTime(16, 10), 'Horário cancelado', 'warning', 'Mel (Carlos Eduardo Alves) em '.$openedAt->copy()->addMonths(8)->format('d/m/Y').' 10:00.', true, null],
+            [$winter, 'Campanha ativada', 'success', 'Retornos de inverno: 3 tarefas criadas na fila de contatos.', true, null],
+            [$openedAt->copy()->addMonths(15)->setTime(14, 15), 'Presença confirmada', 'success', 'Luna (Ricardo Mendes) em '.$openedAt->copy()->addMonths(15)->format('d/m/Y').' 09:00.', true, null],
+            [now()->subDays(6)->setTime(11, 5), 'Horário cancelado', 'warning', 'Luna (Ricardo Mendes) em '.$appointments['luna-cancelado']->scheduled_at->timezone('America/Sao_Paulo')->format('d/m/Y H:i').'.', true, $appointments['luna-cancelado']],
+            [now()->subHours(5), 'Presença confirmada', 'success', 'Nina (Fernanda Souza) em '.$appointments['nina-hoje']->scheduled_at->timezone('America/Sao_Paulo')->format('d/m/Y H:i').'.', false, $appointments['nina-hoje']],
+            [now()->subHours(2), 'Presença confirmada', 'success', 'Mel (Carlos Eduardo Alves) em '.$appointments['mel-confirmado']->scheduled_at->timezone('America/Sao_Paulo')->format('d/m/Y H:i').'.', false, $appointments['mel-confirmado']],
+        ];
+
+        foreach ($samples as [$at, $title, $status, $body, $read, $appointment]) {
+            $notification = Notification::make()->title($title)->body($body);
+            match ($status) {
+                'success' => $notification->success(),
+                'warning' => $notification->warning(),
+                default => $notification->danger(),
+            };
+            if ($appointment instanceof Appointment) {
+                $notification->actions([
+                    Action::make('open')->label('Abrir horário')->button()->url(AppointmentResource::getUrl('edit', ['record' => $appointment], panel: 'company')),
+                ]);
+            }
+
+            $users = collect([$owner]);
+            if ($at->greaterThanOrEqualTo($attendant->created_at)) {
+                $users->push($attendant);
+            }
+
+            foreach ($users as $user) {
+                $user->notifications()->create([
+                    'id' => (string) Str::uuid(),
+                    'type' => FilamentDatabaseNotification::class,
+                    'data' => $notification->getDatabaseMessage(),
+                    'read_at' => $read ? $at->copy()->addHours(4) : null,
+                    'created_at' => $at,
+                    'updated_at' => $at,
+                ]);
+            }
         }
     }
 

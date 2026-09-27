@@ -12,6 +12,6 @@ return [
     |
     */
 
-    'require_email_verification' => env('CLIENTLOOP_REQUIRE_EMAIL_VERIFICATION', true),
+    'require_email_verification' => env('CLIENTLOOP_REQUIRE_EMAIL_VERIFICATION', false),
 
 ];
