@@ -10,9 +10,7 @@ return new class extends Migration
     {
         Schema::table('companies', function (Blueprint $table) {
             $table->json('business_breaks')->nullable()->after('appointment_slot_minutes');
-            $table->timestamp('hours_configured_at')->nullable()->after('onboarding_completed_at');
-            $table->timestamp('guide_viewed_at')->nullable()->after('hours_configured_at');
-            $table->string('public_booking_token', 64)->nullable()->unique()->after('guide_viewed_at');
+            $table->string('public_booking_token', 64)->nullable()->unique()->after('business_breaks');
         });
 
         Schema::table('company_subscriptions', function (Blueprint $table) {
@@ -83,7 +81,7 @@ return new class extends Migration
         });
 
         Schema::table('companies', function (Blueprint $table) {
-            $table->dropColumn(['business_breaks', 'hours_configured_at', 'guide_viewed_at', 'public_booking_token']);
+            $table->dropColumn(['business_breaks', 'public_booking_token']);
         });
     }
 };
