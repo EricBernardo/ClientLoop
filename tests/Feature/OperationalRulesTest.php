@@ -87,7 +87,7 @@ class OperationalRulesTest extends TestCase
             ->assertOk()
             ->assertSee('Importar responsáveis e pets')
             ->assertDontSee('Agendamentos e histórico');
-        $this->get('/admin/how-to-use')->assertOk()->assertSee('Organize seu pet shop, um banho de cada vez.')->assertSee('Cadastre os serviços')->assertSee('Cadastre os pets')->assertSee('Faltou ou cancelou?')->assertSee('Sem resposta no WhatsApp?');
+        $this->get('/admin/how-to-use')->assertOk()->assertSee('Organize seu pet shop, um banho de cada vez.')->assertSee('Cadastre os serviços')->assertSee('Cadastre os pets')->assertSee('Faltou ou cancelou?')->assertSee('Sem resposta no WhatsApp?')->assertSee('Olhe o sino')->assertSee('Abra os relatórios')->assertSee('Separe tosador e equipe');
         $this->get('/admin/appointments')->assertOk()->assertSee('Data e horário')->assertSee('Situação')->assertDontSee('Valor potencial')->assertSee('Agendado');
         $this->get('/admin/activity-logs')->assertOk()->assertSee('Histórico de ações');
     }
@@ -186,6 +186,9 @@ class OperationalRulesTest extends TestCase
             ->assertSee('Link para o tutor')
             ->assertSee('Lista de espera e campanhas')
             ->assertSee('Fila de WhatsApp')
+            ->assertSee('Primeiro acesso nas telas reais')
+            ->assertSee('Avisos para a equipe')
+            ->assertSee('Relatórios do mês')
             ->assertSee(route('register'))
             ->assertSee('/images/clientloop-symbol.png');
         $this->get('/register')->assertOk()->assertSee('Crie sua conta');

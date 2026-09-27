@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="ClientLoop organiza agenda, pets, pacotes, confirmações WhatsApp, link de agendamento para o tutor, lista de espera e retornos — feito para pet shops de banho e tosa.">
+    <meta name="description" content="ClientLoop organiza agenda, pets, pacotes, confirmações WhatsApp, link do tutor, lista de espera, relatórios e avisos para a equipe — feito para pet shops de banho e tosa.">
     <title>ClientLoop — Agenda, pacotes e retornos para pet shop</title>
     <link rel="icon" type="image/png" href="{{ asset('images/clientloop-symbol.png') }}">
     <style>
@@ -26,7 +26,7 @@
                 <div>
                     <div class="eyebrow">Feito para pet shops de banho e tosa</div>
                     <h1>Sua agenda, seus pets e seus pacotes no mesmo lugar.</h1>
-                    <p>Marque banhos sem conflito, confirme pelo WhatsApp ou por link, dê ao tutor um link de agendamento, acompanhe pacotes e retornos — e não deixe ninguém sumir da fila.</p>
+                    <p>Marque banhos sem conflito, confirme pelo WhatsApp ou por link, dê ao tutor um link de agendamento, acompanhe pacotes e retornos — e não deixe ninguém sumir da fila. No primeiro acesso, o painel abre uma tela de cada vez. Depois, o sino avisa a equipe quando alguém confirma, cancela ou quando a cota do mês acaba.</p>
                     <div class="actions">
                         <a class="button primary" href="{{ route('register') }}">Começar gratuitamente</a>
                         <a class="button secondary" href="#recursos">Ver o que inclui</a>
@@ -45,6 +45,7 @@
                     <div class="task"><span>Confirmar Mel · WhatsApp</span><em>Pendente</em></div>
                     <div class="task"><span>Link do tutor · horário solicitado</span><em>Novo</em></div>
                     <div class="task"><span>Remarcar falta do Bob</span><em>Retorno</em></div>
+                    <div class="task"><span>Sino · Nina confirmou presença</span><em>Agora</em></div>
                 </aside>
             </section>
         </main>
@@ -84,7 +85,22 @@
                 <article class="card">
                     <div class="icon">◉</div>
                     <h3>Equipe e visão da loja</h3>
-                    <p>Convide atendentes, veja relatórios de confirmação e no-show, histórico de ações e exportação dos dados do responsável.</p>
+                    <p>Separe tosadores de quem usa o painel. Convide atendentes, consulte o histórico de ações e exporte os dados do responsável.</p>
+                </article>
+                <article class="card">
+                    <div class="icon">1</div>
+                    <h3>Primeiro acesso nas telas reais</h3>
+                    <p>Horários, serviço, responsável, pet, um horário na agenda, a fila com a mensagem pronta e a conclusão do atendimento. O checklist fica para o pacote e o guia.</p>
+                </article>
+                <article class="card">
+                    <div class="icon">⚑</div>
+                    <h3>Avisos para a equipe</h3>
+                    <p>O sino avisa quando o tutor confirma ou cancela, quando uma campanha ou importação termina, e quando a cota de tarefas do mês acaba.</p>
+                </article>
+                <article class="card">
+                    <div class="icon">%</div>
+                    <h3>Relatórios do mês</h3>
+                    <p>Confirmação, falta, ocupação de hoje, pacotes vendidos e contatos ainda pendentes — na mesma linguagem da agenda e da fila.</p>
                 </article>
             </div>
         </div>
@@ -99,7 +115,7 @@
                 <div class="step">
                     <div class="step-num">01 — PREPARE</div>
                     <h3>Serviços, equipe e horários</h3>
-                    <p>Cadastre banho e tosa, tosadores, intervalos e mensagens. Importe a lista antiga em CSV.</p>
+                    <p>No primeiro acesso o painel conduz horários, o primeiro serviço, um responsável com pet, a agenda, a fila e a conclusão. Depois entram tosadores, mensagens e a importação em CSV.</p>
                 </div>
                 <div class="step">
                     <div class="step-num">02 — AGENDE</div>
@@ -125,7 +141,7 @@
             <div>
                 <div class="eyebrow" style="color:#74cbbd">Comece agora</div>
                 <h2>Deixe a rotina do pet shop mais leve a partir do próximo banho.</h2>
-                <p>Crie a conta, configure horários e comece pela agenda, pela fila de contatos ou pelo link do tutor.</p>
+                <p>Crie a conta e siga as telas do primeiro atendimento. A agenda, a fila, o link do tutor e os relatórios ficam no painel.</p>
             </div>
             <a class="button primary" href="{{ route('register') }}">Criar conta</a>
         </section>
