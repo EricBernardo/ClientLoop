@@ -20,12 +20,18 @@ class GenerateContactTasks extends Command
         Company::query()->whereIn('status', ['trial', 'active'])->each(function (Company $company) use ($tasks) {
             $now = now();
             Appointment::withoutGlobalScopes()->with(['customer', 'service', 'pet'])->where('company_id', $company->id)->whereIn('status', ['scheduled', 'reschedule_requested'])->whereBetween('scheduled_at', [$now, $now->copy()->addHours($company->confirmation_hours)])->each(function (Appointment $appointment) use ($tasks, $company): void {
-                $tasks->create($company, $appointment->customer, 'confirmation', $appointment->scheduled_at->copy()->subHours($company->confirmation_hours), [
+                $created = $tasks->create($company, $appointment->customer, 'confirmation', $appointment->scheduled_at->copy()->subHours($company->confirmation_hours), [
                     'appointment' => $appointment,
                     'service' => $appointment->service,
                     'pet' => $appointment->pet,
                     'cycle_key' => 'appointment:'.$appointment->id,
                 ]);
+                if ($created === null) {
+                    $pending = ContactTask::withoutGlobalScopes()->where('appointment_id', $appointment->id)->where('type', 'confirmation')->where('status', 'pending')->first();
+                    if ($pending) {
+                        $tasks->ensureConfirmationLink($pending);
+                    }
+                }
             });
 
             Customer::withoutGlobalScopes()->with(['appointments.service', 'appointments.pet', 'company'])->where('company_id', $company->id)->whereNull('opted_out_at')->whereDoesntHave('appointments', fn ($query) => $query->whereIn('status', ['scheduled', 'confirmed', 'reschedule_requested'])->where('scheduled_at', '>', $now))->each(function (Customer $customer) use ($tasks, $company, $now): void {

@@ -9,6 +9,7 @@ use App\Models\ContactTask;
 use App\Models\Customer;
 use App\Models\MessageTemplate;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ContactTaskService
@@ -56,10 +57,11 @@ class ContactTaskService
                     ? $this->renderer->render(
                         $template->body,
                         $customer,
-                        $links['service'] ?? null,
+                        $links['service'] ?? $appointment?->service,
                         $appointment?->scheduled_at,
                         $pet,
                         $company,
+                        $this->confirmationUrl($appointment),
                     )
                     : null,
             ]);
@@ -129,6 +131,55 @@ class ContactTaskService
 
             return $appointment->fresh();
         });
+    }
+
+    public function ensureConfirmationLink(ContactTask $task): void
+    {
+        if ($task->type !== 'confirmation' || ($task->status ?? 'pending') !== 'pending') {
+            return;
+        }
+
+        $task->loadMissing(['appointment.customer', 'appointment.service', 'appointment.pet', 'appointment.company']);
+        $appointment = $task->appointment;
+        $confirmationUrl = $this->confirmationUrl($appointment);
+
+        if ($appointment === null || $confirmationUrl === null || str_contains((string) $task->rendered_message, $confirmationUrl)) {
+            return;
+        }
+
+        $template = $task->message_template_id
+            ? MessageTemplate::withoutGlobalScopes()->find($task->message_template_id)
+            : null;
+        $template ??= MessageTemplate::withoutGlobalScopes()->where('company_id', $task->company_id)->where('type', 'confirmation')->where('active', true)->first();
+
+        if ($template === null || ! str_contains($template->body, '{{link_confirmacao}}')) {
+            return;
+        }
+
+        $task->update([
+            'rendered_message' => $this->renderer->render(
+                $template->body,
+                $appointment->customer,
+                $appointment->service,
+                $appointment->scheduled_at,
+                $appointment->pet,
+                $appointment->company,
+                $confirmationUrl,
+            ),
+        ]);
+    }
+
+    private function confirmationUrl(?Appointment $appointment): ?string
+    {
+        if ($appointment === null) {
+            return null;
+        }
+
+        if (blank($appointment->confirmation_token)) {
+            $appointment->forceFill(['confirmation_token' => Str::random(40)])->save();
+        }
+
+        return route('appointment.confirm.show', $appointment->confirmation_token);
     }
 
     private function applyAppointmentOutcome(Appointment $appointment, string $outcome): void

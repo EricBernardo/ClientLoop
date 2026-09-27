@@ -18,6 +18,7 @@ use App\Services\CampaignService;
 use App\Services\ContactTaskService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 class ContactTaskFlowTest extends TestCase
@@ -144,6 +145,68 @@ class ContactTaskFlowTest extends TestCase
         $this->assertSame('pending', $task->status);
         $this->assertNull($task->outcome);
         $this->assertSame(1, $task->attempts()->where('outcome', 'no_response')->count());
+    }
+
+    public function test_confirmation_message_includes_public_confirmation_link(): void
+    {
+        [$company, $user, $customer, $appointment] = $this->confirmationContext();
+        $this->actingAs($user);
+        MessageTemplate::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'name' => 'Confirmar',
+            'type' => 'confirmation',
+            'body' => 'Link: {{link_confirmacao}} Agenda: {{link_agendamento}}',
+            'active' => true,
+        ]);
+
+        $task = app(ContactTaskService::class)->create($company, $customer, 'confirmation', now(), [
+            'appointment' => $appointment,
+            'service' => $appointment->service,
+            'pet' => $appointment->pet,
+            'cycle_key' => 'appointment:'.$appointment->id,
+        ]);
+
+        $token = $appointment->fresh()->confirmation_token;
+        $this->assertNotNull($token);
+        $this->assertStringContainsString('/confirm/'.$token, (string) $task->rendered_message);
+        $this->assertStringContainsString('/book/', (string) $task->rendered_message);
+    }
+
+    public function test_pending_confirmation_without_link_is_filled_on_the_next_generation(): void
+    {
+        [$company, $user, $customer, $appointment] = $this->confirmationContext();
+        $this->actingAs($user);
+        Appointment::withoutEvents(function () use ($appointment): void {
+            $appointment->forceFill([
+                'scheduled_at' => now()->addHours(2)->minute(0)->second(0),
+                'ends_at' => now()->addHours(3)->minute(0)->second(0),
+                'confirmation_token' => 'token-da-mel',
+                'status' => 'scheduled',
+            ])->save();
+        });
+        $template = MessageTemplate::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'name' => 'Confirmar',
+            'type' => 'confirmation',
+            'body' => 'Olá, {{responsavel}}! Link: {{link_confirmacao}} — ou agende: {{link_agendamento}}',
+            'active' => true,
+        ]);
+        $task = ContactTask::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $customer->id,
+            'appointment_id' => $appointment->id,
+            'message_template_id' => $template->id,
+            'type' => 'confirmation',
+            'cycle_key' => 'appointment:'.$appointment->id,
+            'priority' => 'high',
+            'due_at' => now(),
+            'status' => 'pending',
+            'rendered_message' => 'Olá, Ana Beatriz! Podemos confirmar? Se preferir, responda pelo link: — ou agende outro horário: https://clientloop.on-forge.com/book/token',
+        ]);
+
+        Artisan::call('clientloop:generate-tasks');
+
+        $this->assertStringContainsString('/confirm/token-da-mel', (string) $task->fresh()->rendered_message);
     }
 
     public function test_second_no_response_on_confirmation_completes_task(): void

@@ -94,8 +94,10 @@ class ContactTaskResource extends Resource
                         Placeholder::make('open_whatsapp')
                             ->label('1. Enviar mensagem')
                             ->content(function (ContactTask $record): HtmlString {
+                                app(ContactTaskService::class)->ensureConfirmationLink($record);
+                                $record->refresh();
                                 $apiConfigured = filled(config('services.whatsapp.token')) && filled(config('services.whatsapp.phone_number_id'));
-                                $cacheKey = 'whatsapp-send-ui-'.$record->id.'-'.(auth()->id() ?? 'guest');
+                                $cacheKey = 'whatsapp-send-ui-'.$record->id.'-'.md5((string) $record->rendered_message).'-'.(auth()->id() ?? 'guest');
                                 $result = cache()->remember($cacheKey, now()->addMinutes(5), function () use ($record, $apiConfigured): array {
                                     return $apiConfigured
                                         ? app(WhatsAppSender::class)->send($record)
