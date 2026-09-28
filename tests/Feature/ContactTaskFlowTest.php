@@ -147,6 +147,37 @@ class ContactTaskFlowTest extends TestCase
         $this->assertSame(1, $task->attempts()->where('outcome', 'no_response')->count());
     }
 
+    public function test_whatsapp_modal_shows_the_message_and_the_result_choices(): void
+    {
+        [$company, $user, $customer, $appointment] = $this->confirmationContext();
+        $this->actingAs($user);
+        $task = ContactTask::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $customer->id,
+            'appointment_id' => $appointment->id,
+            'type' => 'confirmation',
+            'priority' => 'high',
+            'due_at' => now(),
+            'status' => 'pending',
+            'rendered_message' => 'Podemos confirmar o banho de Mel?',
+        ]);
+        $task->setRelation('customer', $customer);
+        $task->setRelation('appointment', $appointment);
+
+        $html = view('filament.contact-tasks.whatsapp-modal', [
+            'task' => $task,
+            'url' => 'https://wa.me/5511999998888',
+            'apiConfigured' => false,
+            'sent' => false,
+            'error' => null,
+        ])->render();
+
+        $this->assertStringContainsString('Abrir WhatsApp', $html);
+        $this->assertStringContainsString('Podemos confirmar o banho de Mel?', $html);
+        $this->assertStringContainsString($customer->name, $html);
+        $this->assertStringContainsString('https://wa.me/5511999998888', $html);
+    }
+
     public function test_public_confirmation_completes_the_pending_task(): void
     {
         [$company, $user, $customer, $appointment] = $this->confirmationContext();

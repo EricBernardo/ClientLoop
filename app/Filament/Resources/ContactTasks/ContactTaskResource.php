@@ -13,17 +13,18 @@ use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\HtmlString;
 use UnitEnum;
 
 class ContactTaskResource extends Resource
@@ -88,54 +89,38 @@ class ContactTaskResource extends Resource
                     ->icon('heroicon-o-chat-bubble-left-right')
                     ->visible(fn (ContactTask $record) => $record->status === 'pending' && $record->whatsappUrl() !== null)
                     ->modalHeading('Contatar no WhatsApp')
-                    ->modalDescription('Abra a conversa, envie a mensagem e registre o resultado nesta mesma tela.')
+                    ->modalWidth(Width::TwoExtraLarge)
                     ->modalSubmitActionLabel('Salvar resultado')
                     ->form([
-                        Placeholder::make('open_whatsapp')
-                            ->label('1. Enviar mensagem')
-                            ->content(function (ContactTask $record): HtmlString {
-                                app(ContactTaskService::class)->ensureConfirmationLink($record);
-                                $record->refresh();
-                                $apiConfigured = filled(config('services.whatsapp.token')) && filled(config('services.whatsapp.phone_number_id'));
-                                $cacheKey = 'whatsapp-send-ui-'.$record->id.'-'.md5((string) $record->rendered_message).'-'.(auth()->id() ?? 'guest');
-                                $result = cache()->remember($cacheKey, now()->addMinutes(5), function () use ($record, $apiConfigured): array {
-                                    return $apiConfigured
-                                        ? app(WhatsAppSender::class)->send($record)
-                                        : ['mode' => 'manual', 'url' => $record->whatsappUrl(), 'sent' => false, 'error' => null];
-                                });
-
-                                $note = '';
-                                if ($apiConfigured && ($result['sent'] ?? false)) {
-                                    $note = '<p class="mt-2 text-sm text-success-600 dark:text-success-400">Mensagem enviada automaticamente pela API do WhatsApp.</p>';
-                                } elseif ($apiConfigured && filled($result['error'] ?? null)) {
-                                    $note = '<p class="mt-2 text-sm text-warning-600 dark:text-warning-400">API configurada, mas o envio automático falhou: '.e((string) $result['error']).'. Use o link manual abaixo.</p>';
-                                } elseif ($apiConfigured) {
-                                    $note = '<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">API do WhatsApp configurada neste ambiente.</p>';
-                                }
-
-                                $url = $result['url'] ?? $record->whatsappUrl();
-
-                                return new HtmlString(
-                                    '<a href="'.e((string) $url).'" target="_blank" rel="noopener" class="fi-link text-sm font-bold text-primary-600 underline dark:text-primary-400">Abrir WhatsApp com a mensagem pronta →</a>'
-                                    .$note
-                                    .'<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Depois volte aqui e escolha o resultado abaixo.</p>'
-                                );
-                            }),
-                        Select::make('outcome')
-                            ->label('2. Resultado')
-                            ->options([
-                                'confirmed' => 'Confirmou',
-                                'reschedule_requested' => 'Pediu alteração',
-                                'scheduled' => 'Agendou',
-                                'no_response' => 'Sem resposta',
-                                'opt_out' => 'Não receber contato',
-                            ])
-                            ->helperText(fn (ContactTask $record): ?string => $record->type === 'confirmation' && $record->attempts()->where('outcome', 'no_response')->count() === 0
-                                ? 'Em confirmação, a primeira “Sem resposta” mantém a tarefa na fila para uma segunda tentativa.'
-                                : null)
-                            ->searchable()
-                            ->required(),
-                        Textarea::make('note')->label('Observação'),
+                        View::make('filament.contact-tasks.whatsapp-modal')
+                            ->viewData(fn (ContactTask $record): array => self::whatsappModalData($record)),
+                        Section::make('Registrar resultado')
+                            ->description('Escolha o que a pessoa respondeu.')
+                            ->compact()
+                            ->schema([
+                                ToggleButtons::make('outcome')
+                                    ->label('Resultado')
+                                    ->options([
+                                        'confirmed' => 'Confirmou',
+                                        'reschedule_requested' => 'Pediu alteração',
+                                        'scheduled' => 'Agendou',
+                                        'no_response' => 'Sem resposta',
+                                        'opt_out' => 'Não receber contato',
+                                    ])
+                                    ->colors([
+                                        'confirmed' => 'success',
+                                        'reschedule_requested' => 'warning',
+                                        'scheduled' => 'info',
+                                        'no_response' => 'gray',
+                                        'opt_out' => 'danger',
+                                    ])
+                                    ->inline()
+                                    ->helperText(fn (ContactTask $record): ?string => $record->type === 'confirmation' && $record->attempts()->where('outcome', 'no_response')->count() === 0
+                                        ? 'Em confirmação, a primeira “Sem resposta” mantém a tarefa na fila para uma segunda tentativa.'
+                                        : null)
+                                    ->required(),
+                                Textarea::make('note')->label('Observação')->rows(3),
+                            ]),
                     ])
                     ->action(function (ContactTask $record, array $data) {
                         app(ContactTaskService::class)->complete($record, $data['outcome'], $data['note'] ?? null);
@@ -155,6 +140,32 @@ class ContactTaskResource extends Resource
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * @return array{task: ContactTask, url: string, apiConfigured: bool, sent: bool, error: ?string}
+     */
+    private static function whatsappModalData(ContactTask $record): array
+    {
+        app(ContactTaskService::class)->ensureConfirmationLink($record);
+        $record->refresh();
+        $record->loadMissing(['customer', 'appointment.pet', 'appointment.service']);
+
+        $apiConfigured = filled(config('services.whatsapp.token')) && filled(config('services.whatsapp.phone_number_id'));
+        $cacheKey = 'whatsapp-send-ui-'.$record->id.'-'.md5((string) $record->rendered_message).'-'.(auth()->id() ?? 'guest');
+        $result = cache()->remember($cacheKey, now()->addMinutes(5), function () use ($record, $apiConfigured): array {
+            return $apiConfigured
+                ? app(WhatsAppSender::class)->send($record)
+                : ['mode' => 'manual', 'url' => $record->whatsappUrl(), 'sent' => false, 'error' => null];
+        });
+
+        return [
+            'task' => $record,
+            'url' => (string) ($result['url'] ?? $record->whatsappUrl()),
+            'apiConfigured' => $apiConfigured,
+            'sent' => (bool) ($result['sent'] ?? false),
+            'error' => filled($result['error'] ?? null) ? (string) $result['error'] : null,
+        ];
     }
 
     public static function getPages(): array
