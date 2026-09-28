@@ -266,7 +266,8 @@ class AppointmentResource extends Resource
                 Action::make('agendarProximaEtapa')->label('Agendar próxima etapa')->color('primary')->icon('heroicon-o-calendar-days')->visible(fn (Appointment $record): bool => $record->status === 'completed' && self::nextPackageAppointmentUrl($record) !== null)->url(fn (Appointment $record): string => self::nextPackageAppointmentUrl($record) ?? self::getUrl('index')),
                 Action::make('reagendar')->label('Reagendar')->color('info')->icon('heroicon-o-calendar-days')->visible(fn (Appointment $record) => in_array($record->status, ['scheduled', 'confirmed', 'reschedule_requested'], true))->form([HourlyDateTimePicker::make('scheduled_at')->label('Nova data e horário')->required()->after('now')])->action(function (Appointment $record, array $data): void {
                     try {
-                        app(ContactTaskService::class)->reschedule($record, $data['scheduled_at']);
+                        app(ContactTaskService::class)->rescheduleByStaff($record, $data['scheduled_at']);
+                        Notification::make()->success()->title('Horário reagendado')->send();
                     } catch (ValidationException $exception) {
                         Notification::make()->danger()->title('Não foi possível reagendar')->body(collect($exception->errors())->flatten()->first())->send();
                     }

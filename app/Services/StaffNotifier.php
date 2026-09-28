@@ -31,16 +31,12 @@ class StaffNotifier
 
     public function appointmentRescheduled(Appointment $appointment): void
     {
-        $this->send($appointment->company_id, Notification::make()
-            ->title('Horário alterado pelo link')
-            ->warning()
-            ->body($this->appointmentSummary($appointment))
-            ->actions([
-                Action::make('open')
-                    ->label('Abrir horário')
-                    ->button()
-                    ->url(AppointmentResource::getUrl('edit', ['record' => $appointment], panel: 'company')),
-            ]));
+        $this->send($appointment->company_id, $this->appointmentMovedNotification($appointment, 'Horário alterado pelo link'));
+    }
+
+    public function appointmentRescheduledByStaff(Appointment $appointment): void
+    {
+        $this->send($appointment->company_id, $this->appointmentMovedNotification($appointment, 'Horário reagendado'));
     }
 
     public function appointmentConfirmed(Appointment $appointment): void
@@ -174,6 +170,20 @@ class StaffNotifier
             ->label('Ver importações')
             ->button()
             ->url(Imports::getUrl(panel: 'company'));
+    }
+
+    private function appointmentMovedNotification(Appointment $appointment, string $title): Notification
+    {
+        return Notification::make()
+            ->title($title)
+            ->warning()
+            ->body($this->appointmentSummary($appointment))
+            ->actions([
+                Action::make('open')
+                    ->label('Abrir horário')
+                    ->button()
+                    ->url(AppointmentResource::getUrl('edit', ['record' => $appointment], panel: 'company')),
+            ]);
     }
 
     private function appointmentSummary(Appointment $appointment): string

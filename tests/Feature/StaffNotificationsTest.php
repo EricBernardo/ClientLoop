@@ -79,6 +79,18 @@ class StaffNotificationsTest extends TestCase
         $this->assertSame('Thor (Maria) em 29/09/2026 10:00.', $user->notifications->first()->data['body']);
     }
 
+    public function test_rescheduling_from_the_appointment_list_notifies_the_shop(): void
+    {
+        [$company, $user] = $this->shop();
+        $appointment = $this->appointment($company, 'reschedule-token');
+
+        app(ContactTaskService::class)->rescheduleByStaff($appointment, Carbon::parse('2026-09-30 15:00:00', 'America/Sao_Paulo'));
+
+        $this->assertSame('2026-09-30 15:00', $appointment->fresh()->scheduled_at->timezone('America/Sao_Paulo')->format('Y-m-d H:i'));
+        $this->assertSame(['Horário reagendado'], $user->notifications->map(fn ($notification): string => $notification->data['title'])->all());
+        $this->assertSame('Thor (Maria) em 30/09/2026 15:00.', $user->notifications->first()->data['body']);
+    }
+
     public function test_exhausted_task_quota_notifies_the_shop_once_per_month(): void
     {
         [$company, $user] = $this->shop(taskLimit: 1);

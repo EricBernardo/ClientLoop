@@ -118,6 +118,14 @@ class ContactTaskService
         $this->log($customer->company_id, 'customer.opted_in', $customer, ['consent' => $consentNote]);
     }
 
+    public function rescheduleByStaff(Appointment $appointment, \DateTimeInterface $scheduledAt): Appointment
+    {
+        $appointment = $this->reschedule($appointment, $scheduledAt);
+        $this->notifier->appointmentRescheduledByStaff($appointment);
+
+        return $appointment;
+    }
+
     public function reschedule(Appointment $appointment, \DateTimeInterface $scheduledAt): Appointment
     {
         if (in_array($appointment->status, ['cancelled', 'completed', 'no_show'], true)) {
