@@ -96,7 +96,7 @@
                 <article class="card">
                     <div class="icon">⚑</div>
                     <h3>Avisos para a equipe</h3>
-                    <p>O sino avisa quando o tutor confirma ou cancela, quando uma campanha ou importação termina, e quando a cota de tarefas do mês acaba.</p>
+                    <p>O sino avisa quando o tutor pede ou altera um horário pelo link, quando confirma ou cancela, quando uma campanha ou importação termina, quando a cota acaba, e quando o período de teste encerra.</p>
                 </article>
                 <article class="card">
                     <div class="icon">%</div>

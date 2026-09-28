@@ -251,8 +251,12 @@ class CamadaQuatroSeisTest extends TestCase
         CompanySubscription::withoutGlobalScopes()->where('company_id', $company->id)->update(['ends_at' => now()->subDay(), 'status' => 'trial']);
 
         Artisan::call('clientloop:expire-trials');
+        Artisan::call('clientloop:expire-trials');
 
         $this->assertSame('suspended', $company->fresh()->status);
+        $this->assertSame('expired', CompanySubscription::withoutGlobalScopes()->where('company_id', $company->id)->value('status'));
+        $this->assertSame(['Período de teste encerrado'], $user->notifications->map(fn ($notification): string => $notification->data['title'])->all());
+        $this->assertSame('A loja foi suspensa. Ative a assinatura para voltar a usar o painel.', $user->notifications->first()->data['body']);
     }
 
     public function test_team_member_role_is_stored_on_user(): void

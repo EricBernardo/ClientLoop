@@ -93,6 +93,36 @@ class StaffNotifier
             ->body('Confirmações e retornos não serão criados até o próximo mês.'));
     }
 
+    public function contactQuotaExhausted(Company $company): void
+    {
+        $record = UsageRecord::withoutGlobalScopes()->firstOrCreate([
+            'company_id' => $company->id,
+            'period' => now()->format('Y-m'),
+        ]);
+
+        $claimed = UsageRecord::withoutGlobalScopes()
+            ->whereKey($record->id)
+            ->whereNull('contact_quota_notified_at')
+            ->update(['contact_quota_notified_at' => now()]);
+
+        if ($claimed !== 1) {
+            return;
+        }
+
+        $this->send($company, Notification::make()
+            ->title('Cota de responsáveis esgotada')
+            ->warning()
+            ->body('Novos responsáveis pelo link público não serão cadastrados até o próximo mês.'));
+    }
+
+    public function trialEnded(Company $company): void
+    {
+        $this->send($company, Notification::make()
+            ->title('Período de teste encerrado')
+            ->danger()
+            ->body('A loja foi suspensa. Ative a assinatura para voltar a usar o painel.'));
+    }
+
     public function importFinished(ImportRun $run): void
     {
         $run->loadMissing('company');

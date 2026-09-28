@@ -60,7 +60,7 @@ class PublicBookingController extends Controller
         }
 
         $service = Service::withoutGlobalScopes()->where('company_id', $company->id)->whereKey($data['service_id'])->where('active', true)->firstOrFail();
-        $customer = $this->resolveCustomer($company, $data, $phone, $quota);
+        $customer = $this->resolveCustomer($company, $data, $phone, $quota, $notifier);
         if ($customer instanceof RedirectResponse) {
             return $customer;
         }
@@ -144,7 +144,7 @@ class PublicBookingController extends Controller
     /**
      * @param  array{customer_name: string, customer_phone: string, customer_id?: int|null}  $data
      */
-    private function resolveCustomer(Company $company, array $data, string $phone, QuotaService $quota): Customer|RedirectResponse
+    private function resolveCustomer(Company $company, array $data, string $phone, QuotaService $quota, StaffNotifier $notifier): Customer|RedirectResponse
     {
         if (filled($data['customer_id'] ?? null)) {
             $linked = Customer::withoutGlobalScopes()->where('company_id', $company->id)->whereKey($data['customer_id'])->first();
@@ -161,6 +161,8 @@ class PublicBookingController extends Controller
         try {
             $quota->consumeContact($company);
         } catch (ValidationException $exception) {
+            $notifier->contactQuotaExhausted($company);
+
             return back()->withInput()->withErrors($exception->errors());
         }
 

@@ -26,6 +26,19 @@ class StaffNotificationsTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_how_to_use_describes_the_bell_events(): void
+    {
+        [, $user] = $this->shop();
+        $user->forceFill(['email_verified_at' => now()])->save();
+
+        $this->actingAs($user)
+            ->get('/admin/how-to-use')
+            ->assertOk()
+            ->assertSee('quando o tutor pede ou altera um horário pelo link')
+            ->assertSee('quando o período de teste encerra')
+            ->assertSee('fim do teste');
+    }
+
     public function test_company_panel_renders_the_notification_bell(): void
     {
         [, $user] = $this->shop();
@@ -83,6 +96,29 @@ class StaffNotificationsTest extends TestCase
         $this->assertSame(['Cota de tarefas esgotada'], $user->notifications->map(fn ($notification): string => $notification->data['title'])->all());
         $this->assertSame('Confirmações e retornos não serão criados até o próximo mês.', $user->notifications->first()->data['body']);
         $this->assertNotNull(UsageRecord::withoutGlobalScopes()->where('company_id', $company->id)->value('task_quota_notified_at'));
+    }
+
+    public function test_public_booking_refused_for_contact_quota_notifies_the_shop_once_per_month(): void
+    {
+        [$company, $user] = $this->shop();
+        $company->forceFill(['status' => 'active', 'public_booking_token' => 'booking-token'])->saveQuietly();
+        $company->subscription->plan->update(['contact_limit' => 0]);
+        $service = Service::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Banho', 'duration_minutes' => 60]);
+        $payload = [
+            'customer_name' => 'Nova tutora',
+            'customer_phone' => '11988887777',
+            'pet_name' => 'Bob',
+            'service_id' => $service->id,
+            'scheduled_at' => now()->next('Wednesday')->setTime(11, 0)->format('Y-m-d\TH:i'),
+        ];
+
+        $this->post('/book/booking-token', $payload)->assertRedirect()->assertSessionHasErrors('quota');
+        $this->post('/book/booking-token', $payload)->assertRedirect()->assertSessionHasErrors('quota');
+
+        $this->assertSame(['Cota de responsáveis esgotada'], $user->notifications->map(fn ($notification): string => $notification->data['title'])->all());
+        $this->assertSame('Novos responsáveis pelo link público não serão cadastrados até o próximo mês.', $user->notifications->first()->data['body']);
+        $this->assertNotNull(UsageRecord::withoutGlobalScopes()->where('company_id', $company->id)->value('contact_quota_notified_at'));
+        $this->assertSame(0, Customer::withoutGlobalScopes()->where('company_id', $company->id)->count());
     }
 
     public function test_opted_out_customer_does_not_notify_the_shop(): void
