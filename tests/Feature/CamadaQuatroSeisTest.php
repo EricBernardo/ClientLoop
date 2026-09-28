@@ -132,6 +132,59 @@ class CamadaQuatroSeisTest extends TestCase
         $this->assertSame('confirmed', $appointment->fresh()->status);
     }
 
+    public function test_public_booking_success_replaces_the_form_with_a_message(): void
+    {
+        [$company, , , , $service] = $this->baseContext();
+        $company->forceFill(['public_booking_token' => 'booking-token'])->saveQuietly();
+        $payload = [
+            'customer_name' => 'Nova tutora',
+            'customer_phone' => '11988887777',
+            'pet_name' => 'Bob',
+            'service_id' => $service->id,
+            'scheduled_at' => now()->next(Carbon::WEDNESDAY)->setTime(11, 0)->format('Y-m-d\TH:i'),
+        ];
+
+        $this->post('/book/booking-token', $payload)->assertRedirect('/book/booking-token');
+
+        $this->get('/book/booking-token')
+            ->assertSee('Horário solicitado com sucesso. A loja vai confirmar pelo WhatsApp.')
+            ->assertSee('Bob')
+            ->assertSee('23/09/2026')
+            ->assertSee('11:00')
+            ->assertDontSee('Solicitar horário')
+            ->assertDontSee('name="customer_name"', false);
+
+        $this->get('/book/booking-token')
+            ->assertSee('Horário solicitado com sucesso. A loja vai confirmar pelo WhatsApp.')
+            ->assertDontSee('Solicitar horário');
+
+        $this->post('/book/booking-token', [
+            ...$payload,
+            'customer_name' => 'Outra tutora',
+            'customer_phone' => '11977776666',
+            'pet_name' => 'Luna',
+        ])->assertRedirect('/book/booking-token');
+
+        $this->assertSame(1, Appointment::withoutGlobalScopes()->where('company_id', $company->id)->count());
+    }
+
+    public function test_public_booking_validation_error_keeps_the_form(): void
+    {
+        [$company, , , , $service] = $this->baseContext();
+        $company->forceFill(['public_booking_token' => 'booking-token'])->saveQuietly();
+        $this->from('/book/booking-token');
+
+        $this->post('/book/booking-token', [
+            'customer_name' => '',
+            'customer_phone' => '11988887777',
+            'pet_name' => 'Bob',
+            'service_id' => $service->id,
+            'scheduled_at' => now()->next(Carbon::WEDNESDAY)->setTime(11, 0)->format('Y-m-d\TH:i'),
+        ])->assertRedirect('/book/booking-token')->assertSessionHasErrors('customer_name');
+
+        $this->get('/book/booking-token')->assertSee('Solicitar horário')->assertDontSee('Pode fechar esta página');
+    }
+
     public function test_public_booking_inside_the_window_creates_a_confirmation_task(): void
     {
         [$company, , , , $service] = $this->baseContext();

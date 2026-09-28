@@ -37,12 +37,17 @@ class PublicBookingController extends Controller
             'services' => Service::withoutGlobalScopes()->where('company_id', $company->id)->where('active', true)->orderBy('name')->get(),
             'customer' => $customer,
             'openAppointment' => $openAppointment,
+            'confirmation' => session('public_booking.'.$token),
         ]);
     }
 
     public function store(Request $request, string $token, QuotaService $quota, StaffNotifier $notifier, ContactTaskService $tasks)
     {
         $company = Company::query()->where('public_booking_token', $token)->whereIn('status', ['trial', 'active'])->firstOrFail();
+
+        if (session()->has('public_booking.'.$token)) {
+            return redirect()->route('booking.show', $token);
+        }
 
         $data = $request->validate([
             'customer_name' => ['required', 'string', 'max:255'],
@@ -95,7 +100,7 @@ class PublicBookingController extends Controller
         $notifier->appointmentRequested($appointment);
         $this->queueConfirmation($company, $customer, $appointment, $service, $pet, $tasks);
 
-        return redirect()->route('booking.show', $token)->with('status', 'Horário solicitado com sucesso. A loja vai confirmar pelo WhatsApp.');
+        return $this->booked($company, $token, 'Horário solicitado com sucesso. A loja vai confirmar pelo WhatsApp.', $appointment);
     }
 
     private function rescheduleOpenAppointment(Company $company, Customer $customer, Appointment $appointment, Service $service, Pet $pet, Carbon $scheduledAt, string $token, StaffNotifier $notifier, ContactTaskService $tasks): RedirectResponse
@@ -103,7 +108,7 @@ class PublicBookingController extends Controller
         $sameSlot = $appointment->scheduled_at?->format('Y-m-d H:i') === $scheduledAt->format('Y-m-d H:i');
 
         if ($sameSlot && (int) $appointment->service_id === (int) $service->id) {
-            return redirect()->route('booking.show', $token)->with('status', 'Esse horário já está marcado.');
+            return $this->booked($company, $token, 'Esse horário já está marcado.', $appointment);
         }
 
         try {
@@ -124,7 +129,23 @@ class PublicBookingController extends Controller
         $notifier->appointmentRescheduled($appointment);
         $this->queueConfirmation($company, $customer, $appointment, $service, $pet, $tasks);
 
-        return redirect()->route('booking.show', $token)->with('status', 'Horário atualizado. O horário anterior deste pet foi substituído.');
+        return $this->booked($company, $token, 'Horário atualizado. O horário anterior deste pet foi substituído.', $appointment);
+    }
+
+    private function booked(Company $company, string $token, string $message, Appointment $appointment): RedirectResponse
+    {
+        $appointment->loadMissing(['pet', 'service']);
+        $when = $appointment->scheduled_at?->timezone($company->timezone ?: config('app.timezone'));
+
+        session()->put('public_booking.'.$token, [
+            'message' => $message,
+            'pet' => $appointment->pet?->name,
+            'service' => $appointment->service?->name,
+            'date' => $when?->format('d/m/Y'),
+            'time' => $when?->format('H:i'),
+        ]);
+
+        return redirect()->route('booking.show', $token);
     }
 
     private function openAppointment(Company $company, Customer $customer, ?Pet $pet = null): ?Appointment

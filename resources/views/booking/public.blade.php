@@ -17,11 +17,18 @@
 <body>
 <div class="card">
     <h1>{{ $company->name }}</h1>
+    @if($confirmation)
+        <div class="status">{{ $confirmation['message'] }}</div>
+        <p><strong>{{ $confirmation['pet'] }}</strong>@if($confirmation['service']) · {{ $confirmation['service'] }}@endif</p>
+        @if($confirmation['date'])
+            <p>{{ $confirmation['date'] }} às {{ $confirmation['time'] }}</p>
+        @endif
+        <p>Pode fechar esta página.</p>
+    @else
     <p>Escolha um horário disponível. A loja confirma pelo WhatsApp.</p>
     @if($openAppointment)
         <p>Você já tem {{ $openAppointment->pet?->name }} em {{ $openAppointment->scheduled_at?->format('d/m/Y') }} às {{ $openAppointment->scheduled_at?->format('H:i') }}. Outro horário substitui esse.</p>
     @endif
-    @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
     <form method="post" action="{{ route('booking.store', $company->public_booking_token) }}">
         @csrf
         @if($customer)
@@ -48,6 +55,7 @@
         @error('scheduled_at')<div class="error">{{ $message }}</div>@enderror
         <button type="submit">{{ $openAppointment ? 'Atualizar horário' : 'Solicitar horário' }}</button>
     </form>
+    @endif
 </div>
 </body>
 </html>
