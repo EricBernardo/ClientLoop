@@ -46,9 +46,29 @@ class Company extends Model
         return $this->hasMany(User::class);
     }
 
+    public function owner(): HasOne
+    {
+        return $this->hasOne(User::class)->where('role', 'owner');
+    }
+
     public function subscription(): HasOne
     {
         return $this->hasOne(CompanySubscription::class);
+    }
+
+    public function customers(): HasMany
+    {
+        return $this->hasMany(Customer::class);
+    }
+
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
+    }
+
+    public function currentUsage(): HasOne
+    {
+        return $this->hasOne(UsageRecord::class)->where('period', now()->format('Y-m'));
     }
 
     public function groomers(): HasMany
