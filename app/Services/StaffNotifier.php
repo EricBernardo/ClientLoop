@@ -29,6 +29,20 @@ class StaffNotifier
             ]));
     }
 
+    public function appointmentRescheduled(Appointment $appointment): void
+    {
+        $this->send($appointment->company_id, Notification::make()
+            ->title('Horário alterado pelo link')
+            ->warning()
+            ->body($this->appointmentSummary($appointment))
+            ->actions([
+                Action::make('open')
+                    ->label('Abrir horário')
+                    ->button()
+                    ->url(AppointmentResource::getUrl('edit', ['record' => $appointment], panel: 'company')),
+            ]));
+    }
+
     public function appointmentConfirmed(Appointment $appointment): void
     {
         $this->send($appointment->company_id, Notification::make()

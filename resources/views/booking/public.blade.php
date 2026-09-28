@@ -18,6 +18,9 @@
 <div class="card">
     <h1>{{ $company->name }}</h1>
     <p>Escolha um horário disponível. A loja confirma pelo WhatsApp.</p>
+    @if($openAppointment)
+        <p>Você já tem {{ $openAppointment->pet?->name }} em {{ $openAppointment->scheduled_at?->format('d/m/Y') }} às {{ $openAppointment->scheduled_at?->format('H:i') }}. Outro horário substitui esse.</p>
+    @endif
     @if(session('status'))<div class="status">{{ session('status') }}</div>@endif
     <form method="post" action="{{ route('booking.store', $company->public_booking_token) }}">
         @csrf
@@ -31,19 +34,19 @@
         <input name="customer_phone" value="{{ old('customer_phone', $customer?->phone) }}" required placeholder="11999999999">
         @error('customer_phone')<div class="error">{{ $message }}</div>@enderror
         <label>Nome do pet</label>
-        <input name="pet_name" value="{{ old('pet_name') }}" required>
+        <input name="pet_name" value="{{ old('pet_name', $openAppointment?->pet?->name) }}" required>
         @error('pet_name')<div class="error">{{ $message }}</div>@enderror
         <label>Serviço</label>
         <select name="service_id" required>
             @foreach($services as $service)
-                <option value="{{ $service->id }}" @selected(old('service_id') == $service->id)>{{ $service->name }} ({{ $service->duration_minutes }} min)</option>
+                <option value="{{ $service->id }}" @selected(old('service_id', $openAppointment?->service_id) == $service->id)>{{ $service->name }} ({{ $service->duration_minutes }} min)</option>
             @endforeach
         </select>
         @error('service_id')<div class="error">{{ $message }}</div>@enderror
         <label>Data e horário</label>
         <input type="datetime-local" name="scheduled_at" value="{{ old('scheduled_at') }}" required>
         @error('scheduled_at')<div class="error">{{ $message }}</div>@enderror
-        <button type="submit">Solicitar horário</button>
+        <button type="submit">{{ $openAppointment ? 'Atualizar horário' : 'Solicitar horário' }}</button>
     </form>
 </div>
 </body>

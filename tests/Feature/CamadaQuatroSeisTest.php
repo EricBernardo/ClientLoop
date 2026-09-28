@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Appointment;
 use App\Models\Company;
 use App\Models\CompanySubscription;
+use App\Models\ContactTask;
 use App\Models\Customer;
 use App\Models\Groomer;
 use App\Models\Pet;
@@ -174,6 +175,55 @@ class CamadaQuatroSeisTest extends TestCase
 
         $this->assertSame(1, Customer::withoutGlobalScopes()->where('company_id', $company->id)->count());
         $this->assertSame($customer->id, Appointment::withoutGlobalScopes()->where('company_id', $company->id)->whereHas('pet', fn ($query) => $query->where('name', 'Luna'))->value('customer_id'));
+    }
+
+    public function test_public_booking_moves_the_open_appointment_and_closes_its_confirmation(): void
+    {
+        [$company, $user, $customer, $pet, $service] = $this->baseContext();
+        $company->forceFill(['public_booking_token' => 'booking-token'])->saveQuietly();
+        $appointment = Appointment::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $customer->id,
+            'pet_id' => $pet->id,
+            'service_id' => $service->id,
+            'scheduled_at' => now()->next(Carbon::WEDNESDAY)->setTime(11, 0),
+            'duration_minutes' => 60,
+            'status' => 'scheduled',
+            'confirmation_token' => 'token-aberto',
+        ]);
+        $task = ContactTask::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $customer->id,
+            'appointment_id' => $appointment->id,
+            'type' => 'confirmation',
+            'cycle_key' => 'appointment:'.$appointment->id,
+            'priority' => 'high',
+            'due_at' => now()->next(Carbon::TUESDAY)->setTime(11, 0),
+            'status' => 'pending',
+            'rendered_message' => 'Banho marcado para o horário antigo.',
+        ]);
+
+        $this->get('/book/booking-token?customer_id='.$customer->id)
+            ->assertOk()
+            ->assertSee('Outro horário substitui esse')
+            ->assertSee('Atualizar horário');
+
+        $this->post('/book/booking-token', [
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->name,
+            'customer_phone' => '11999999999',
+            'pet_name' => $pet->name,
+            'service_id' => $service->id,
+            'scheduled_at' => now()->next(Carbon::WEDNESDAY)->setTime(15, 0)->format('Y-m-d\TH:i'),
+        ])->assertRedirect();
+
+        $this->assertSame(1, Appointment::withoutGlobalScopes()->where('pet_id', $pet->id)->count());
+        $this->assertSame('15:00', $appointment->fresh()->scheduled_at->format('H:i'));
+        $this->assertSame('scheduled', $appointment->fresh()->status);
+        $this->assertSame('cancelled', $task->fresh()->status);
+        $this->assertSame('rescheduled', $task->fresh()->outcome);
+        $this->assertSame(0, ContactTask::withoutGlobalScopes()->where('appointment_id', $appointment->id)->where('status', 'pending')->count());
+        $this->assertSame(['Horário alterado pelo link'], $user->notifications->map(fn ($notification): string => $notification->data['title'])->all());
     }
 
     public function test_waitlist_entry_can_be_stored(): void

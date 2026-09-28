@@ -26,14 +26,17 @@ class PublicBookingController extends Controller
         $company = Company::query()->where('public_booking_token', $token)->whereIn('status', ['trial', 'active'])->firstOrFail();
 
         $customer = null;
+        $openAppointment = null;
         if (filled(request('customer_id'))) {
             $customer = Customer::withoutGlobalScopes()->where('company_id', $company->id)->whereKey(request('customer_id'))->first();
+            $openAppointment = $customer ? $this->openAppointment($company, $customer) : null;
         }
 
         return view('booking.public', [
             'company' => $company,
             'services' => Service::withoutGlobalScopes()->where('company_id', $company->id)->where('active', true)->orderBy('name')->get(),
             'customer' => $customer,
+            'openAppointment' => $openAppointment,
         ]);
     }
 
@@ -67,13 +70,20 @@ class PublicBookingController extends Controller
             [],
         );
 
+        $scheduledAt = Carbon::parse($data['scheduled_at']);
+        $openAppointment = $this->openAppointment($company, $customer, $pet);
+
+        if ($openAppointment) {
+            return $this->rescheduleOpenAppointment($company, $customer, $openAppointment, $service, $pet, $scheduledAt, $token, $notifier, $tasks);
+        }
+
         try {
             $appointment = Appointment::withoutGlobalScopes()->create([
                 'company_id' => $company->id,
                 'customer_id' => $customer->id,
                 'pet_id' => $pet->id,
                 'service_id' => $service->id,
-                'scheduled_at' => Carbon::parse($data['scheduled_at']),
+                'scheduled_at' => $scheduledAt,
                 'duration_minutes' => $service->duration_minutes,
                 'status' => 'scheduled',
                 'confirmation_token' => Str::random(40),
@@ -86,6 +96,49 @@ class PublicBookingController extends Controller
         $this->queueConfirmation($company, $customer, $appointment, $service, $pet, $tasks);
 
         return redirect()->route('booking.show', $token)->with('status', 'Horário solicitado com sucesso. A loja vai confirmar pelo WhatsApp.');
+    }
+
+    private function rescheduleOpenAppointment(Company $company, Customer $customer, Appointment $appointment, Service $service, Pet $pet, Carbon $scheduledAt, string $token, StaffNotifier $notifier, ContactTaskService $tasks): RedirectResponse
+    {
+        $sameSlot = $appointment->scheduled_at?->format('Y-m-d H:i') === $scheduledAt->format('Y-m-d H:i');
+
+        if ($sameSlot && (int) $appointment->service_id === (int) $service->id) {
+            return redirect()->route('booking.show', $token)->with('status', 'Esse horário já está marcado.');
+        }
+
+        try {
+            if ((int) $appointment->service_id !== (int) $service->id) {
+                $appointment->service_id = $service->id;
+                $appointment->duration_minutes = $service->duration_minutes;
+            }
+
+            if (! $sameSlot) {
+                $appointment = $tasks->reschedule($appointment, $scheduledAt);
+            } else {
+                $appointment->save();
+            }
+        } catch (ValidationException $exception) {
+            return back()->withInput()->withErrors($exception->errors());
+        }
+
+        $notifier->appointmentRescheduled($appointment);
+        $this->queueConfirmation($company, $customer, $appointment, $service, $pet, $tasks);
+
+        return redirect()->route('booking.show', $token)->with('status', 'Horário atualizado. O horário anterior deste pet foi substituído.');
+    }
+
+    private function openAppointment(Company $company, Customer $customer, ?Pet $pet = null): ?Appointment
+    {
+        $open = Appointment::withoutGlobalScopes()
+            ->with(['pet', 'service', 'tasks' => fn ($query) => $query->where('status', 'pending')->where('type', 'confirmation')])
+            ->where('company_id', $company->id)
+            ->where('customer_id', $customer->id)
+            ->whereIn('status', ['scheduled', 'confirmed', 'reschedule_requested'])
+            ->when($pet, fn ($query) => $query->where('pet_id', $pet->id))
+            ->orderBy('scheduled_at')
+            ->get();
+
+        return $open->first(fn (Appointment $appointment): bool => $appointment->tasks->isNotEmpty()) ?? $open->first();
     }
 
     /**
