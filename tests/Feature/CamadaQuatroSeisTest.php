@@ -185,6 +185,62 @@ class CamadaQuatroSeisTest extends TestCase
         $this->get('/book/booking-token')->assertSee('Solicitar horário')->assertDontSee('Pode fechar esta página');
     }
 
+    public function test_public_booking_form_returns_after_the_confirmed_appointment_is_deleted(): void
+    {
+        [$company, , $customer, $pet, $service] = $this->baseContext();
+        $company->forceFill(['public_booking_token' => 'booking-token'])->saveQuietly();
+        $deleted = Appointment::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $customer->id,
+            'pet_id' => $pet->id,
+            'service_id' => $service->id,
+            'scheduled_at' => Carbon::parse('2026-09-28 16:00:00', 'America/Sao_Paulo'),
+            'duration_minutes' => 60,
+            'status' => 'scheduled',
+        ]);
+        $deletedId = $deleted->id;
+        $deleted->delete();
+        session()->put('public_booking.booking-token', [
+            'appointment_id' => $deletedId,
+            'message' => 'Horário atualizado. O horário anterior deste pet foi substituído.',
+            'pet' => 'Mel',
+            'service' => 'Banho',
+            'date' => '28/09/2026',
+            'time' => '16:00',
+        ]);
+        $replacement = Appointment::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $customer->id,
+            'pet_id' => $pet->id,
+            'service_id' => $service->id,
+            'scheduled_at' => Carbon::parse('2026-09-30 10:00:00', 'America/Sao_Paulo'),
+            'duration_minutes' => 60,
+            'status' => 'scheduled',
+        ]);
+
+        $this->get('/book/booking-token?customer_id='.$customer->id)
+            ->assertSee('Atualizar horário')
+            ->assertSee('name="customer_name"', false)
+            ->assertDontSee('Horário atualizado. O horário anterior deste pet foi substituído.')
+            ->assertDontSee('28/09/2026 às 16:00');
+
+        $this->post('/book/booking-token', [
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->name,
+            'customer_phone' => '11999999999',
+            'pet_name' => $pet->name,
+            'service_id' => $service->id,
+            'scheduled_at' => '2026-09-30T15:00',
+        ])->assertRedirect('/book/booking-token');
+
+        $this->assertSame('15:00', $replacement->fresh()->scheduled_at->timezone('America/Sao_Paulo')->format('H:i'));
+        $this->get('/book/booking-token')
+            ->assertSee('Horário atualizado. O horário anterior deste pet foi substituído.')
+            ->assertSee('30/09/2026')
+            ->assertSee('15:00')
+            ->assertDontSee('28/09/2026');
+    }
+
     public function test_public_booking_inside_the_window_creates_a_confirmation_task(): void
     {
         [$company, , , , $service] = $this->baseContext();

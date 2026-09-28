@@ -37,7 +37,7 @@ class PublicBookingController extends Controller
             'services' => Service::withoutGlobalScopes()->where('company_id', $company->id)->where('active', true)->orderBy('name')->get(),
             'customer' => $customer,
             'openAppointment' => $openAppointment,
-            'confirmation' => session('public_booking.'.$token),
+            'confirmation' => $this->confirmation($token),
         ]);
     }
 
@@ -45,7 +45,7 @@ class PublicBookingController extends Controller
     {
         $company = Company::query()->where('public_booking_token', $token)->whereIn('status', ['trial', 'active'])->firstOrFail();
 
-        if (session()->has('public_booking.'.$token)) {
+        if ($this->confirmation($token) !== null) {
             return redirect()->route('booking.show', $token);
         }
 
@@ -138,6 +138,7 @@ class PublicBookingController extends Controller
         $when = $appointment->scheduled_at?->timezone($company->timezone ?: config('app.timezone'));
 
         session()->put('public_booking.'.$token, [
+            'appointment_id' => $appointment->id,
             'message' => $message,
             'pet' => $appointment->pet?->name,
             'service' => $appointment->service?->name,
@@ -146,6 +147,28 @@ class PublicBookingController extends Controller
         ]);
 
         return redirect()->route('booking.show', $token);
+    }
+
+    /**
+     * @return array{appointment_id: int, message: string, pet: ?string, service: ?string, date: ?string, time: ?string}|null
+     */
+    private function confirmation(string $token): ?array
+    {
+        $confirmation = session('public_booking.'.$token);
+
+        if (! is_array($confirmation)) {
+            return null;
+        }
+
+        $appointment = Appointment::withoutGlobalScopes()->find($confirmation['appointment_id'] ?? null);
+
+        if ($appointment === null || ! in_array($appointment->status, ['scheduled', 'confirmed', 'reschedule_requested'], true)) {
+            session()->forget('public_booking.'.$token);
+
+            return null;
+        }
+
+        return $confirmation;
     }
 
     private function openAppointment(Company $company, Customer $customer, ?Pet $pet = null): ?Appointment

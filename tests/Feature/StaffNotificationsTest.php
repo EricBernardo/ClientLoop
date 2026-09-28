@@ -17,8 +17,10 @@ use App\Models\UsageRecord;
 use App\Models\User;
 use App\Services\CampaignService;
 use App\Services\ContactTaskService;
+use App\Services\StaffNotifier;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -48,6 +50,19 @@ class StaffNotificationsTest extends TestCase
             ->get('/admin')
             ->assertOk()
             ->assertSee('fi-topbar-database-notifications-btn', false);
+    }
+
+    public function test_bell_notification_is_saved_without_waiting_for_the_queue(): void
+    {
+        config(['queue.default' => 'database']);
+        [$company, $user] = $this->shop();
+        $appointment = $this->appointment($company, 'queued-confirm');
+
+        app(StaffNotifier::class)->appointmentConfirmed($appointment);
+
+        $this->assertSame(0, DB::table('jobs')->count());
+        $this->assertSame(1, $user->notifications()->where('data->format', 'filament')->count());
+        $this->assertSame('Presença confirmada', $user->notifications()->first()->data['title']);
     }
 
     public function test_tutor_confirmation_notifies_the_shop_once_and_not_another_company(): void

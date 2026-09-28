@@ -232,6 +232,10 @@ class StaffNotifier
             return;
         }
 
-        $notification->sendToDatabase($users);
+        $databaseNotification = $notification->toDatabase();
+
+        foreach ($users as $user) {
+            $user->notifyNow($databaseNotification);
+        }
     }
 }
