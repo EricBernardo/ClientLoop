@@ -7,6 +7,7 @@ use App\Filament\Resources\Services\Pages\CreateService;
 use App\Filament\Resources\Services\Pages\EditService;
 use App\Filament\Resources\Services\Pages\ListServices;
 use App\Models\Service;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -52,7 +53,11 @@ class ServiceResource extends Resource
     {
         return $schema
             ->components([
-                TextInput::make('name')->label('Nome')->required(), BrlMoneyInput::make('suggested_price')->label('Preço sugerido'), TextInput::make('duration_minutes')->label('Duração padrão (minutos)')->numeric()->integer()->minValue(5)->default(60)->required(), TextInput::make('return_interval_months')->numeric()->integer()->minValue(1)->label('Retorno padrão (meses)')->hintIcon(Heroicon::OutlinedInformationCircle, tooltip: 'Depois de concluir o último atendimento ou pacote, o sistema prevê o próximo retorno usando esta quantidade de meses. Deixe em branco se este serviço não tiver retorno automático.'), Toggle::make('active')->label('Ativo')->default(true),
+                TextInput::make('name')->label('Nome')->required(),
+                BrlMoneyInput::make('suggested_price')->label('Preço sugerido'),
+                TextInput::make('duration_minutes')->label('Duração padrão (minutos)')->numeric()->integer()->minValue(5)->default(60)->visible(fn (): bool => CurrentCompany::isPetShop())->required(fn (): bool => CurrentCompany::isPetShop()),
+                TextInput::make('return_interval_months')->numeric()->integer()->minValue(1)->label('Retorno padrão (meses)')->visible(fn (): bool => CurrentCompany::isPetShop())->hintIcon(Heroicon::OutlinedInformationCircle, tooltip: 'Depois de concluir o último atendimento ou pacote, o sistema prevê o próximo retorno usando esta quantidade de meses. Deixe em branco se este serviço não tiver retorno automático.'),
+                Toggle::make('active')->label('Ativo')->default(true),
             ]);
     }
 
@@ -60,7 +65,11 @@ class ServiceResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')->label('Nome')->searchable(), TextColumn::make('duration_minutes')->label('Duração')->suffix(' min'), TextColumn::make('suggested_price')->label('Preço sugerido')->money('BRL'), TextColumn::make('return_interval_months')->label('Retorno padrão')->suffix(' meses'), IconColumn::make('active')->label('Ativo')->boolean(),
+                TextColumn::make('name')->label('Nome')->searchable(),
+                TextColumn::make('duration_minutes')->label('Duração')->suffix(' min')->visible(fn (): bool => CurrentCompany::isPetShop()),
+                TextColumn::make('suggested_price')->label('Preço sugerido')->money('BRL'),
+                TextColumn::make('return_interval_months')->label('Retorno padrão')->suffix(' meses')->visible(fn (): bool => CurrentCompany::isPetShop()),
+                IconColumn::make('active')->label('Ativo')->boolean(),
             ])
             ->filters([
                 //
@@ -70,7 +79,7 @@ class ServiceResource extends Resource
                 DeleteAction::make(),
             ])
             ->emptyStateHeading('Nenhum serviço cadastrado')
-            ->emptyStateDescription('Crie Banho, Tosa e outros serviços com duração e preço.')
+            ->emptyStateDescription(CurrentCompany::isAutomotive() ? 'Cadastre a mão de obra com nome e preço.' : 'Crie Banho, Tosa e outros serviços com duração e preço.')
             ->emptyStateActions([
                 Action::make('create')->label('Novo serviço')->url(static::getUrl('create')),
             ])

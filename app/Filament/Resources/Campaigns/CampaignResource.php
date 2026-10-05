@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Campaigns;
 
+use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Forms\Components\HourlyDateTimePicker;
 use App\Filament\Resources\Campaigns\Pages\CreateCampaign;
 use App\Filament\Resources\Campaigns\Pages\EditCampaign;
@@ -33,6 +34,8 @@ use UnitEnum;
 
 class CampaignResource extends Resource
 {
+    use LimitsToPetShop;
+
     protected static ?string $model = Campaign::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMegaphone;

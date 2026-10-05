@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Repeater;
@@ -80,8 +81,8 @@ class BusinessSettings extends Page implements HasForms
                     15 => '15 minutos',
                     30 => '30 minutos',
                     60 => '60 minutos',
-                ])->required(),
-                Repeater::make('business_breaks')->label('Intervalos bloqueados')->helperText('Ex.: almoço das 12h às 13h.')->schema([
+                ])->visible(fn (): bool => CurrentCompany::isPetShop())->required(fn (): bool => CurrentCompany::isPetShop()),
+                Repeater::make('business_breaks')->label('Intervalos bloqueados')->helperText('Ex.: almoço das 12h às 13h.')->visible(fn (): bool => CurrentCompany::isPetShop())->schema([
                     TextInput::make('label')->label('Nome')->placeholder('Almoço'),
                     TextInput::make('start_hour')->label('Início (hora)')->numeric()->integer()->minValue(0)->maxValue(23)->required(),
                     TextInput::make('start_minute')->label('Início (min)')->numeric()->integer()->minValue(0)->maxValue(59)->default(0)->required(),
@@ -89,7 +90,7 @@ class BusinessSettings extends Page implements HasForms
                     TextInput::make('end_minute')->label('Fim (min)')->numeric()->integer()->minValue(0)->maxValue(59)->default(0)->required(),
                 ])->columns(5)->default([]),
             ]),
-            Section::make('Regras de contato')->schema([
+            Section::make('Regras de contato')->visible(fn (): bool => CurrentCompany::isPetShop())->schema([
                 TextInput::make('confirmation_hours')->label('Antecedência de confirmação')->numeric()->integer()->minValue(1)->maxValue(72)->suffix('horas')->helperText('Quantas horas antes do atendimento a tarefa de confirmação é criada.')->required(),
                 TextInput::make('reactivation_months')->label('Meses para reativação')->numeric()->integer()->minValue(1)->suffix('meses')->helperText('Clientes sem atividade há pelo menos este tempo entram em campanhas e tarefas de reativação.')->required(),
             ]),
@@ -100,11 +101,17 @@ class BusinessSettings extends Page implements HasForms
     {
         $data = $this->form->getState();
         $data['business_days'] = array_map('intval', $data['business_days']);
-        $data['appointment_slot_minutes'] = (int) $data['appointment_slot_minutes'];
-        $data['confirmation_hours'] = (int) $data['confirmation_hours'];
-        $data['reactivation_months'] = (int) $data['reactivation_months'];
 
         $company = auth()->user()->company;
+
+        if ($company->isPetShop()) {
+            $data['appointment_slot_minutes'] = (int) $data['appointment_slot_minutes'];
+            $data['confirmation_hours'] = (int) $data['confirmation_hours'];
+            $data['reactivation_months'] = (int) $data['reactivation_months'];
+        } else {
+            unset($data['appointment_slot_minutes'], $data['confirmation_hours'], $data['reactivation_months'], $data['business_breaks']);
+        }
+
         $company->update($data);
 
         Notification::make()->title('Horários e regras atualizados.')->success()->send();

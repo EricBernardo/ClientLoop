@@ -24,6 +24,7 @@ class PublicBookingController extends Controller
     public function show(string $token): View
     {
         $company = Company::query()->where('public_booking_token', $token)->whereIn('status', ['trial', 'active'])->firstOrFail();
+        abort_unless($company->isPetShop(), 404);
 
         $customer = null;
         $openAppointment = null;
@@ -44,6 +45,7 @@ class PublicBookingController extends Controller
     public function store(Request $request, string $token, QuotaService $quota, StaffNotifier $notifier, ContactTaskService $tasks)
     {
         $company = Company::query()->where('public_booking_token', $token)->whereIn('status', ['trial', 'active'])->firstOrFail();
+        abort_unless($company->isPetShop(), 404);
 
         if ($this->confirmation($token) !== null) {
             return redirect()->route('booking.show', $token);

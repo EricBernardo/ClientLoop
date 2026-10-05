@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PetPackages;
 
+use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Forms\Components\BrlMoneyInput;
 use App\Filament\Resources\PackageOffers\PackageOfferResource;
 use App\Filament\Resources\PetPackages\Pages\CreatePetPackage;
@@ -31,6 +32,8 @@ use UnitEnum;
 
 class PetPackageResource extends Resource
 {
+    use LimitsToPetShop;
+
     protected static ?string $model = PetPackage::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTicket;

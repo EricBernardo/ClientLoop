@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Customers\Pages;
 
 use App\Filament\Resources\Customers\CustomerResource;
+use App\Support\CurrentCompany;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -12,6 +13,6 @@ class ListCustomers extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()->label('Novo responsável')->url(CustomerResource::getUrl('create'))];
+        return [CreateAction::make()->label(CurrentCompany::isAutomotive() ? 'Novo cliente' : 'Novo responsável')->url(CustomerResource::getUrl('create'))];
     }
 }

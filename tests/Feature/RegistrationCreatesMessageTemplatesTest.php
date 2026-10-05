@@ -22,6 +22,7 @@ class RegistrationCreatesMessageTemplatesTest extends TestCase
 
         $this->post(route('register.store'), [
             'company_name' => 'Pet Shop Modelos',
+            'vertical' => 'pet_shop',
             'name' => 'Paula',
             'email' => $email,
             'password' => 'password-password',

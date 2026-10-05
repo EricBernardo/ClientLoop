@@ -16,6 +16,11 @@ abstract class TenantModel extends Model
                 $q->where($q->getModel()->getTable().'.company_id', $u->company_id);
             }
         });
+        static::saving(function (self $m): void {
+            if (! $m->company_id && auth()->check()) {
+                $m->company_id = auth()->user()->company_id;
+            }
+        });
         static::creating(function (self $m): void {
             if (! $m->company_id && auth()->check()) {
                 $m->company_id = auth()->user()->company_id;

@@ -23,6 +23,16 @@ class Customer extends TenantModel
         return $this->hasMany(Pet::class);
     }
 
+    public function vehicles(): HasMany
+    {
+        return $this->hasMany(Vehicle::class);
+    }
+
+    public function serviceOrders(): HasMany
+    {
+        return $this->hasMany(ServiceOrder::class);
+    }
+
     public function tasks(): HasMany
     {
         return $this->hasMany(ContactTask::class);

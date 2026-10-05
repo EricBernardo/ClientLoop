@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MessageTemplates;
 
+use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Resources\MessageTemplates\Pages\CreateMessageTemplate;
 use App\Filament\Resources\MessageTemplates\Pages\EditMessageTemplate;
 use App\Filament\Resources\MessageTemplates\Pages\ListMessageTemplates;
@@ -26,6 +27,8 @@ use UnitEnum;
 
 class MessageTemplateResource extends Resource
 {
+    use LimitsToPetShop;
+
     protected static ?string $model = MessageTemplate::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;

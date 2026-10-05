@@ -4,6 +4,7 @@ use App\Http\Controllers\AppointmentConfirmationController;
 use App\Http\Controllers\ImportTemplateController;
 use App\Http\Controllers\PublicBookingController;
 use App\Http\Controllers\RegistrationController;
+use App\Http\Controllers\ServiceReceiptController;
 use Filament\Pages\Dashboard;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ Route::post('/register', [RegistrationController::class, 'store'])->name('regist
 Route::redirect('/app', '/admin');
 Route::redirect('/super', '/platform');
 Route::get('/admin/imports/template/{type}', ImportTemplateController::class)->middleware(['auth', 'verified.when_required'])->name('imports.template');
+Route::get('/recibo/{receipt}', [ServiceReceiptController::class, 'show'])->middleware(['auth', 'verified.when_required'])->name('receipts.show');
 Route::get('/verify-email', fn () => view('auth.verify'))->middleware('auth')->name('verification.notice');
 Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
     $request->fulfill();

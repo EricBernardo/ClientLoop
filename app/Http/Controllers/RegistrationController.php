@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CompanyVertical;
 use App\Models\Company;
 use App\Models\CompanySubscription;
 use App\Models\Plan;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class RegistrationController extends Controller
 {
@@ -22,17 +24,33 @@ class RegistrationController extends Controller
 
     public function store(Request $request, DefaultMessageTemplateService $messageTemplates)
     {
-        $data = $request->validate(['company_name' => ['required', 'string', 'max:120'], 'name' => ['required', 'string', 'max:120'], 'email' => ['required', 'email', 'max:255', 'unique:users,email'], 'password' => ['required', 'confirmed', 'min:12']]);
+        $data = $request->validate([
+            'company_name' => ['required', 'string', 'max:120'],
+            'vertical' => ['required', Rule::enum(CompanyVertical::class)],
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'confirmed', 'min:12'],
+        ], [
+            'vertical.required' => 'Escolha o tipo de negócio.',
+            'vertical.enum' => 'Escolha pet shop ou serviços automotivos.',
+        ]);
         $requireVerification = (bool) config('clientloop.require_email_verification');
 
         $user = DB::transaction(function () use ($data, $requireVerification, $messageTemplates) {
-            $company = Company::create(['name' => $data['company_name'], 'slug' => Str::slug($data['company_name']).'-'.Str::lower(Str::random(6))]);
+            $company = Company::create([
+                'name' => $data['company_name'],
+                'slug' => Str::slug($data['company_name']).'-'.Str::lower(Str::random(6)),
+                'vertical' => $data['vertical'],
+            ]);
             $plan = Plan::where('is_default', true)->first() ?? Plan::firstOrCreate(
                 ['name' => 'Teste gratuito'],
                 ['contact_limit' => 500, 'task_limit' => 1000, 'is_default' => true],
             );
             CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'trial', 'starts_at' => now(), 'ends_at' => now()->addDays(14)]);
-            $messageTemplates->provision($company);
+
+            if ($company->isPetShop()) {
+                $messageTemplates->provision($company);
+            }
 
             return User::create([
                 'company_id' => $company->id,

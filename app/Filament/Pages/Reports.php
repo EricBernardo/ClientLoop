@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\LimitsToPetShop;
 use App\Models\Appointment;
 use App\Models\ContactTask;
 use App\Models\PetPackage;
@@ -12,6 +13,8 @@ use UnitEnum;
 
 class Reports extends Page
 {
+    use LimitsToPetShop;
+
     protected static ?string $navigationLabel = 'Relatórios';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;

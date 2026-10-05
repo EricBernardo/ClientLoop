@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Appointments;
 
+use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Forms\Components\HourlyDateTimePicker;
 use App\Filament\Pages\Calendar;
 use App\Filament\Resources\Appointments\Pages\CreateAppointment;
@@ -40,6 +41,8 @@ use UnitEnum;
 
 class AppointmentResource extends Resource
 {
+    use LimitsToPetShop;
+
     protected static ?string $model = Appointment::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;

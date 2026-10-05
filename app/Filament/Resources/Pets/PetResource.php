@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Pets;
 
+use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Resources\Pets\Pages\CreatePet;
 use App\Filament\Resources\Pets\Pages\EditPet;
 use App\Filament\Resources\Pets\Pages\ListPets;
@@ -26,6 +27,8 @@ use UnitEnum;
 
 class PetResource extends Resource
 {
+    use LimitsToPetShop;
+
     protected static ?string $model = Pet::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedHeart;

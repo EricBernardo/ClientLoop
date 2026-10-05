@@ -25,6 +25,7 @@ class EmailVerificationToggleTest extends TestCase
 
         $this->post(route('register.store'), [
             'company_name' => 'Pet Shop Verificação',
+            'vertical' => 'pet_shop',
             'name' => 'Marina',
             'email' => $email,
             'password' => 'password-password',
@@ -55,6 +56,7 @@ class EmailVerificationToggleTest extends TestCase
 
         $this->post(route('register.store'), [
             'company_name' => 'Pet Shop Sem Verificação',
+            'vertical' => 'pet_shop',
             'name' => 'Carla',
             'email' => $email,
             'password' => 'password-password',

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\LimitsToPetShop;
 use App\Jobs\ProcessCsvImport;
 use App\Models\ImportRun;
 use BackedEnum;
@@ -16,6 +17,7 @@ use UnitEnum;
 class Imports extends Page
 {
     use AuthorizesRequests;
+    use LimitsToPetShop;
     use WithFileUploads;
 
     protected static ?string $navigationLabel = 'Importações';

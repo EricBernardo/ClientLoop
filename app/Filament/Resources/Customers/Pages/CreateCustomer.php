@@ -21,7 +21,7 @@ class CreateCustomer extends CreateRecord
         } catch (ValidationException $exception) {
             Notification::make()
                 ->danger()
-                ->title('Não foi possível cadastrar o responsável')
+                ->title(auth()->user()->company->isAutomotive() ? 'Não foi possível cadastrar o cliente' : 'Não foi possível cadastrar o responsável')
                 ->body((string) (collect($exception->errors())->flatten()->first() ?? 'Limite do plano atingido.'))
                 ->send();
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Resources\Appointments\AppointmentResource;
 use App\Models\Appointment;
 use BackedEnum;
@@ -13,6 +14,8 @@ use UnitEnum;
 
 class Calendar extends Page
 {
+    use LimitsToPetShop;
+
     protected static ?string $navigationLabel = 'Agenda';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;

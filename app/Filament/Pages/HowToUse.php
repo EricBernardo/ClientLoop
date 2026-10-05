@@ -2,12 +2,15 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\LimitsToPetShop;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 
 class HowToUse extends Page
 {
+    use LimitsToPetShop;
+
     protected static ?string $navigationLabel = 'Como usar';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedInformationCircle;

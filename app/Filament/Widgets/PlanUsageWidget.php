@@ -22,7 +22,7 @@ class PlanUsageWidget extends StatsOverviewWidget
         $tasksLeft = $usage['remaining_tasks'];
 
         return [
-            Stat::make('Responsáveis no mês', $usage['contacts'].' / '.$usage['contact_limit'])
+            Stat::make($company->isAutomotive() ? 'Clientes no mês' : 'Responsáveis no mês', $usage['contacts'].' / '.$usage['contact_limit'])
                 ->description($contactsLeft === 0 ? 'Limite atingido' : "Restam {$contactsLeft}")
                 ->color($contactsLeft === 0 ? 'danger' : ($contactsLeft <= 10 ? 'warning' : 'success')),
             Stat::make('Tarefas no mês', $usage['tasks'].' / '.$usage['task_limit'])

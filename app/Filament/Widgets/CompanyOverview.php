@@ -2,12 +2,20 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\CashEntryDirection;
+use App\Enums\ReceiptStatus;
+use App\Enums\ServiceOrderStatus;
 use App\Filament\Pages\Calendar;
+use App\Filament\Pages\CashFlow;
 use App\Filament\Resources\ContactTasks\ContactTaskResource;
 use App\Filament\Resources\PetPackages\PetPackageResource;
+use App\Filament\Resources\ServiceOrders\ServiceOrderResource;
 use App\Models\Appointment;
+use App\Models\CashEntry;
 use App\Models\ContactTask;
 use App\Models\PetPackage;
+use App\Models\ServiceOrder;
+use App\Models\ServiceReceipt;
 use App\Services\PackageService;
 use App\Services\QuotaService;
 use Filament\Widgets\StatsOverviewWidget;
@@ -20,6 +28,10 @@ class CompanyOverview extends StatsOverviewWidget
         $company = auth()->user()?->company;
         if (! $company) {
             return [];
+        }
+
+        if ($company->isAutomotive()) {
+            return $this->automotiveStats();
         }
 
         $today = now()->startOfDay();
@@ -46,6 +58,47 @@ class CompanyOverview extends StatsOverviewWidget
             Stat::make('Pacotes com pouco saldo', $lowPackages)->description('Ver pacotes com até um crédito')->url(PetPackageResource::getUrl('index', ['view' => 'low']))->color($lowPackages ? 'warning' : 'success'),
             Stat::make('Próximas etapas de pacote', $nextPackageSteps)->description('Ver pacotes que ainda têm atendimento')->url(PetPackageResource::getUrl('index'))->color($nextPackageSteps ? 'primary' : 'success'),
             Stat::make('Pacotes vencidos', $expiredPackages)->description('Ver pacotes fora da validade')->url(PetPackageResource::getUrl('index', ['view' => 'expired']))->color($expiredPackages ? 'danger' : 'success'),
+        ];
+    }
+
+    /** @return array<int, Stat> */
+    private function automotiveStats(): array
+    {
+        $openOrders = ServiceOrder::query()->whereIn('status', [
+            ServiceOrderStatus::Open,
+            ServiceOrderStatus::InProgress,
+            ServiceOrderStatus::Ready,
+        ])->count();
+        $pendingReceipts = ServiceReceipt::query()->where('status', ReceiptStatus::Pending)->count();
+        $from = now()->startOfMonth()->toDateString();
+        $until = now()->endOfMonth()->toDateString();
+        $entries = CashEntry::query()->whereDate('occurred_on', '>=', $from)->whereDate('occurred_on', '<=', $until)->get();
+        $income = 0.0;
+        $expense = 0.0;
+
+        foreach ($entries as $entry) {
+            if ($entry->direction === CashEntryDirection::Income) {
+                $income += (float) $entry->amount;
+            } else {
+                $expense += (float) $entry->amount;
+            }
+        }
+
+        $balance = number_format($income - $expense, 2, ',', '.');
+
+        return [
+            Stat::make('Ordens abertas', (string) $openOrders)
+                ->description('Abertas, em andamento ou prontas')
+                ->url(ServiceOrderResource::getUrl('index'))
+                ->color($openOrders ? 'primary' : 'success'),
+            Stat::make('Recibos pendentes', (string) $pendingReceipts)
+                ->description('Ainda não recebidos')
+                ->url(ServiceOrderResource::getUrl('index'))
+                ->color($pendingReceipts ? 'warning' : 'success'),
+            Stat::make('Saldo do mês', 'R$ '.$balance)
+                ->description('Entradas menos saídas')
+                ->url(CashFlow::getUrl())
+                ->color('success'),
         ];
     }
 }

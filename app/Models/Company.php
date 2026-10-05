@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CompanyVertical;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -12,6 +13,7 @@ class Company extends Model
     protected $fillable = [
         'name',
         'slug',
+        'vertical',
         'timezone',
         'status',
         'confirmation_hours',
@@ -24,12 +26,27 @@ class Company extends Model
         'public_booking_token',
     ];
 
+    protected $attributes = [
+        'vertical' => 'pet_shop',
+    ];
+
     protected function casts(): array
     {
         return [
+            'vertical' => CompanyVertical::class,
             'business_days' => 'array',
             'business_breaks' => 'array',
         ];
+    }
+
+    public function isPetShop(): bool
+    {
+        return $this->vertical === CompanyVertical::PetShop;
+    }
+
+    public function isAutomotive(): bool
+    {
+        return $this->vertical === CompanyVertical::Automotive;
     }
 
     protected static function booted(): void

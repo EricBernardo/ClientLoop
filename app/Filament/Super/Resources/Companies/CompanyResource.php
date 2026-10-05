@@ -2,6 +2,7 @@
 
 namespace App\Filament\Super\Resources\Companies;
 
+use App\Enums\CompanyVertical;
 use App\Filament\Super\Resources\Companies\Pages\EditCompany;
 use App\Filament\Super\Resources\Companies\Pages\ListCompanies;
 use App\Models\Company;
@@ -35,6 +36,7 @@ class CompanyResource extends Resource
         return $schema->components([
             TextInput::make('name')->label('Nome')->required(),
             TextInput::make('slug')->label('Identificador')->required(),
+            Select::make('vertical')->label('Nicho')->options(CompanyVertical::options())->searchable()->required(),
             Select::make('status')->label('Situação')->options(['trial' => 'Período de teste', 'active' => 'Ativa', 'suspended' => 'Suspensa', 'cancelled' => 'Cancelada'])->searchable()->required(),
             TextInput::make('confirmation_hours')->label('Antecedência de confirmação')->numeric()->minValue(1)->maxValue(72),
             TextInput::make('reactivation_months')->label('Meses para reativação')->numeric()->minValue(1),
@@ -48,6 +50,7 @@ class CompanyResource extends Resource
     {
         return $table->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['owner', 'subscription.plan', 'currentUsage']))->columns([
             TextColumn::make('name')->label('Empresa')->searchable(),
+            TextColumn::make('vertical')->label('Nicho')->formatStateUsing(fn (CompanyVertical|string|null $state): string => $state instanceof CompanyVertical ? $state->label() : CompanyVertical::from((string) $state)->label()),
             TextColumn::make('owner.name')->label('Responsável')->searchable(),
             TextColumn::make('owner.email')->label('E-mail')->searchable(),
             TextColumn::make('status')->label('Situação')->badge()->color(fn (?string $state): string => InterfaceLabels::companyStatusColor($state))->formatStateUsing(fn (?string $state): string => InterfaceLabels::companyStatus($state)),

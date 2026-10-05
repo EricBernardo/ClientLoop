@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\LimitsToPetShop;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -9,6 +10,8 @@ use Illuminate\Support\Facades\Storage;
 
 class Videos extends Page
 {
+    use LimitsToPetShop;
+
     protected static ?string $navigationLabel = 'Vídeos';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPlayCircle;

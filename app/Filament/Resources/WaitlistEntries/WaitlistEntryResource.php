@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\WaitlistEntries;
 
+use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Resources\Appointments\AppointmentResource;
 use App\Filament\Resources\WaitlistEntries\Pages\ListWaitlistEntries;
 use App\Models\Pet;
@@ -29,6 +30,8 @@ use UnitEnum;
 
 class WaitlistEntryResource extends Resource
 {
+    use LimitsToPetShop;
+
     protected static ?string $model = WaitlistEntry::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;

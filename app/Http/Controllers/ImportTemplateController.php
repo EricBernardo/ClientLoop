@@ -8,6 +8,8 @@ class ImportTemplateController extends Controller
 {
     public function __invoke(string $type): StreamedResponse
     {
+        abort_if(auth()->user()?->company?->isAutomotive() === true, 403);
+
         $template = match ($type) {
             'customers' => [
                 'filename' => 'modelo-importacao-responsaveis.csv',

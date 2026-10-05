@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Groomers;
 
+use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Resources\Groomers\Pages\CreateGroomer;
 use App\Filament\Resources\Groomers\Pages\EditGroomer;
 use App\Filament\Resources\Groomers\Pages\ListGroomers;
@@ -24,6 +25,8 @@ use UnitEnum;
 
 class GroomerResource extends Resource
 {
+    use LimitsToPetShop;
+
     protected static ?string $model = Groomer::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedScissors;
