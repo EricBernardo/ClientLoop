@@ -21,6 +21,9 @@ class ServiceOrder extends TenantModel
         return [
             'opened_on' => 'date',
             'status' => ServiceOrderStatus::class,
+            'status_changed_at' => 'datetime',
+            'ready_alerted_at' => 'datetime',
+            'unpaid_delivery_alerted_at' => 'datetime',
         ];
     }
 
@@ -76,6 +79,18 @@ class ServiceOrder extends TenantModel
 
             if ($order->exists && $order->status === ServiceOrderStatus::Cancelled && $order->receipt()->exists()) {
                 throw ValidationException::withMessages(['status' => 'Esta ordem já tem recibo. Não dá para cancelar.']);
+            }
+
+            if (! $order->exists || $order->isDirty('status')) {
+                $order->status_changed_at = now();
+
+                if ($order->status !== ServiceOrderStatus::Ready) {
+                    $order->ready_alerted_at = null;
+                }
+
+                if ($order->status !== ServiceOrderStatus::Delivered) {
+                    $order->unpaid_delivery_alerted_at = null;
+                }
             }
         });
     }

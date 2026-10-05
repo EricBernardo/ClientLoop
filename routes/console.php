@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 Schedule::command('clientloop:generate-tasks')->hourly()->withoutOverlapping();
 Schedule::command('clientloop:launch-campaigns')->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command('clientloop:expire-trials')->hourly()->withoutOverlapping();
+Schedule::command('clientloop:alert-workshop')->dailyAt('08:00')->withoutOverlapping();

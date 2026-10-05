@@ -5,10 +5,12 @@ namespace App\Services;
 use App\Filament\Pages\Imports;
 use App\Filament\Resources\Appointments\AppointmentResource;
 use App\Filament\Resources\Campaigns\CampaignResource;
+use App\Filament\Resources\ServiceOrders\ServiceOrderResource;
 use App\Models\Appointment;
 use App\Models\Campaign;
 use App\Models\Company;
 use App\Models\ImportRun;
+use App\Models\ServiceOrder;
 use App\Models\UsageRecord;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -146,6 +148,34 @@ class StaffNotifier
             ->actions([$this->importsAction()]));
     }
 
+    public function orderReadyWaiting(ServiceOrder $order): void
+    {
+        $this->send($order->company_id, Notification::make()
+            ->title('Veículo pronto parado')
+            ->warning()
+            ->body($this->orderSummary($order).' continua pronto para retirada.')
+            ->actions([
+                Action::make('open')
+                    ->label('Abrir ordem')
+                    ->button()
+                    ->url(ServiceOrderResource::getUrl('edit', ['record' => $order], panel: 'company')),
+            ]));
+    }
+
+    public function orderDeliveredUnpaid(ServiceOrder $order): void
+    {
+        $this->send($order->company_id, Notification::make()
+            ->title('Entregue e ainda a receber')
+            ->warning()
+            ->body($this->orderSummary($order).' foi entregue e o recibo continua pendente.')
+            ->actions([
+                Action::make('open')
+                    ->label('Abrir ordem')
+                    ->button()
+                    ->url(ServiceOrderResource::getUrl('edit', ['record' => $order], panel: 'company')),
+            ]));
+    }
+
     public function campaignLaunched(Campaign $campaign, int $created): void
     {
         $tasks = $created === 1
@@ -184,6 +214,15 @@ class StaffNotifier
                     ->button()
                     ->url(AppointmentResource::getUrl('edit', ['record' => $appointment], panel: 'company')),
             ]);
+    }
+
+    private function orderSummary(ServiceOrder $order): string
+    {
+        $order->loadMissing(['customer', 'vehicle']);
+        $vehicle = $order->vehicle?->label() ?: 'Veículo';
+        $customer = $order->customer?->name ?? 'cliente';
+
+        return "{$vehicle} de {$customer}";
     }
 
     private function appointmentSummary(Appointment $appointment): string
