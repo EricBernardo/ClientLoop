@@ -123,6 +123,7 @@ class AppointmentService
                 'company_id' => $prototype->company_id,
                 'customer_id' => $prototype->customer_id,
                 'pet_id' => $prototype->pet_id,
+                'vehicle_id' => $prototype->vehicle_id,
                 'service_id' => $prototype->service_id,
                 'pet_package_id' => $i === 0 ? $prototype->pet_package_id : null,
                 'groomer_id' => $prototype->groomer_id,
@@ -141,7 +142,7 @@ class AppointmentService
 
     private function queueFollowUp(Appointment $appointment, string $reason): void
     {
-        $appointment->loadMissing('customer', 'service', 'pet', 'company');
+        $appointment->loadMissing('customer', 'service', 'pet', 'vehicle', 'company');
         $company = $appointment->company ?? Company::query()->find($appointment->company_id);
         $customer = $appointment->customer;
 
@@ -158,6 +159,7 @@ class AppointmentService
                 'appointment' => $appointment,
                 'service' => $appointment->service,
                 'pet' => $appointment->pet,
+                'vehicle' => $appointment->vehicle,
                 'cycle_key' => 'followup:'.$reason.':'.$appointment->id,
             ]
         );

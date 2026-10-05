@@ -19,7 +19,7 @@
     <h1>{{ $company->name }}</h1>
     @if($confirmation)
         <div class="status">{{ $confirmation['message'] }}</div>
-        <p><strong>{{ $confirmation['pet'] }}</strong>@if($confirmation['service']) · {{ $confirmation['service'] }}@endif</p>
+        <p><strong>{{ $confirmation['subject'] ?? $confirmation['pet'] ?? '' }}</strong>@if($confirmation['service']) · {{ $confirmation['service'] }}@endif</p>
         @if($confirmation['date'])
             <p>{{ $confirmation['date'] }} às {{ $confirmation['time'] }}</p>
         @endif
@@ -27,7 +27,7 @@
     @else
     <p>Escolha um horário disponível. A loja confirma pelo WhatsApp.</p>
     @if($openAppointment)
-        <p>Você já tem {{ $openAppointment->pet?->name }} em {{ $openAppointment->scheduled_at?->format('d/m/Y') }} às {{ $openAppointment->scheduled_at?->format('H:i') }}. Outro horário substitui esse.</p>
+        <p>Você já tem {{ $openAppointment->vehicle?->label() ?? $openAppointment->pet?->name }} em {{ $openAppointment->scheduled_at?->format('d/m/Y') }} às {{ $openAppointment->scheduled_at?->format('H:i') }}. Outro horário substitui esse.</p>
     @endif
     <form method="post" action="{{ route('booking.store', $company->public_booking_token) }}">
         @csrf
@@ -40,9 +40,19 @@
         <label>WhatsApp</label>
         <input name="customer_phone" value="{{ old('customer_phone', $customer?->phone) }}" required placeholder="11999999999">
         @error('customer_phone')<div class="error">{{ $message }}</div>@enderror
-        <label>Nome do pet</label>
-        <input name="pet_name" value="{{ old('pet_name', $openAppointment?->pet?->name) }}" required>
-        @error('pet_name')<div class="error">{{ $message }}</div>@enderror
+        @if($company->isAutomotive())
+            <label>Placa</label>
+            <input name="plate" value="{{ old('plate', $openAppointment?->vehicle?->plate) }}" required>
+            @error('plate')<div class="error">{{ $message }}</div>@enderror
+            <label>Marca</label>
+            <input name="brand" value="{{ old('brand', $openAppointment?->vehicle?->brand) }}">
+            <label>Modelo</label>
+            <input name="model" value="{{ old('model', $openAppointment?->vehicle?->model) }}">
+        @else
+            <label>Nome do pet</label>
+            <input name="pet_name" value="{{ old('pet_name', $openAppointment?->pet?->name) }}" required>
+            @error('pet_name')<div class="error">{{ $message }}</div>@enderror
+        @endif
         <label>Serviço</label>
         <select name="service_id" required>
             @foreach($services as $service)

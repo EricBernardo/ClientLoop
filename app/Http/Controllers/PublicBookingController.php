@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Pet;
 use App\Models\Service;
+use App\Models\Vehicle;
 use App\Services\ContactTaskService;
 use App\Services\PhoneNormalizer;
 use App\Services\QuotaService;
@@ -24,7 +25,6 @@ class PublicBookingController extends Controller
     public function show(string $token): View
     {
         $company = Company::query()->where('public_booking_token', $token)->whereIn('status', ['trial', 'active'])->firstOrFail();
-        abort_unless($company->isPetShop(), 404);
 
         $customer = null;
         $openAppointment = null;
@@ -45,20 +45,26 @@ class PublicBookingController extends Controller
     public function store(Request $request, string $token, QuotaService $quota, StaffNotifier $notifier, ContactTaskService $tasks)
     {
         $company = Company::query()->where('public_booking_token', $token)->whereIn('status', ['trial', 'active'])->firstOrFail();
-        abort_unless($company->isPetShop(), 404);
 
         if ($this->confirmation($token) !== null) {
             return redirect()->route('booking.show', $token);
         }
 
-        $data = $request->validate([
+        $rules = [
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_phone' => ['required', 'string', 'max:30'],
-            'pet_name' => ['required', 'string', 'max:255'],
             'service_id' => ['required', 'integer'],
             'scheduled_at' => ['required', 'date'],
             'customer_id' => ['nullable', 'integer'],
-        ]);
+        ];
+        if ($company->isAutomotive()) {
+            $rules['plate'] = ['required', 'string', 'max:20'];
+            $rules['brand'] = ['nullable', 'string', 'max:80'];
+            $rules['model'] = ['nullable', 'string', 'max:80'];
+        } else {
+            $rules['pet_name'] = ['required', 'string', 'max:255'];
+        }
+        $data = $request->validate($rules);
 
         try {
             $phone = app(PhoneNormalizer::class)->normalize($data['customer_phone']);
@@ -72,23 +78,33 @@ class PublicBookingController extends Controller
             return $customer;
         }
 
-        $pet = Pet::withoutGlobalScopes()->firstOrCreate(
-            ['company_id' => $company->id, 'customer_id' => $customer->id, 'name' => $data['pet_name']],
-            [],
-        );
+        $pet = null;
+        $vehicle = null;
+        if ($company->isAutomotive()) {
+            $vehicle = $this->resolveVehicle($company, $customer, $data);
+            if ($vehicle instanceof RedirectResponse) {
+                return $vehicle;
+            }
+        } else {
+            $pet = Pet::withoutGlobalScopes()->firstOrCreate(
+                ['company_id' => $company->id, 'customer_id' => $customer->id, 'name' => $data['pet_name']],
+                [],
+            );
+        }
 
         $scheduledAt = Carbon::parse($data['scheduled_at']);
-        $openAppointment = $this->openAppointment($company, $customer, $pet);
+        $openAppointment = $this->openAppointment($company, $customer, $pet, $vehicle);
 
         if ($openAppointment) {
-            return $this->rescheduleOpenAppointment($company, $customer, $openAppointment, $service, $pet, $scheduledAt, $token, $notifier, $tasks);
+            return $this->rescheduleOpenAppointment($company, $customer, $openAppointment, $service, $scheduledAt, $token, $notifier, $tasks);
         }
 
         try {
             $appointment = Appointment::withoutGlobalScopes()->create([
                 'company_id' => $company->id,
                 'customer_id' => $customer->id,
-                'pet_id' => $pet->id,
+                'pet_id' => $pet?->id,
+                'vehicle_id' => $vehicle?->id,
                 'service_id' => $service->id,
                 'scheduled_at' => $scheduledAt,
                 'duration_minutes' => $service->duration_minutes,
@@ -100,12 +116,12 @@ class PublicBookingController extends Controller
         }
 
         $notifier->appointmentRequested($appointment);
-        $this->queueConfirmation($company, $customer, $appointment, $service, $pet, $tasks);
+        $this->queueConfirmation($company, $customer, $appointment, $service, $tasks);
 
         return $this->booked($company, $token, 'Horário solicitado com sucesso. A loja vai confirmar pelo WhatsApp.', $appointment);
     }
 
-    private function rescheduleOpenAppointment(Company $company, Customer $customer, Appointment $appointment, Service $service, Pet $pet, Carbon $scheduledAt, string $token, StaffNotifier $notifier, ContactTaskService $tasks): RedirectResponse
+    private function rescheduleOpenAppointment(Company $company, Customer $customer, Appointment $appointment, Service $service, Carbon $scheduledAt, string $token, StaffNotifier $notifier, ContactTaskService $tasks): RedirectResponse
     {
         $sameSlot = $appointment->scheduled_at?->format('Y-m-d H:i') === $scheduledAt->format('Y-m-d H:i');
 
@@ -129,20 +145,22 @@ class PublicBookingController extends Controller
         }
 
         $notifier->appointmentRescheduled($appointment);
-        $this->queueConfirmation($company, $customer, $appointment, $service, $pet, $tasks);
+        $this->queueConfirmation($company, $customer, $appointment, $service, $tasks);
 
-        return $this->booked($company, $token, 'Horário atualizado. O horário anterior deste pet foi substituído.', $appointment);
+        $subject = $company->isAutomotive() ? 'veículo' : 'pet';
+
+        return $this->booked($company, $token, "Horário atualizado. O horário anterior deste {$subject} foi substituído.", $appointment);
     }
 
     private function booked(Company $company, string $token, string $message, Appointment $appointment): RedirectResponse
     {
-        $appointment->loadMissing(['pet', 'service']);
+        $appointment->loadMissing(['pet', 'vehicle', 'service']);
         $when = $appointment->scheduled_at?->timezone($company->timezone ?: config('app.timezone'));
 
         session()->put('public_booking.'.$token, [
             'appointment_id' => $appointment->id,
             'message' => $message,
-            'pet' => $appointment->pet?->name,
+            'subject' => $appointment->vehicle?->label() ?? $appointment->pet?->name,
             'service' => $appointment->service?->name,
             'date' => $when?->format('d/m/Y'),
             'time' => $when?->format('H:i'),
@@ -152,7 +170,7 @@ class PublicBookingController extends Controller
     }
 
     /**
-     * @return array{appointment_id: int, message: string, pet: ?string, service: ?string, date: ?string, time: ?string}|null
+     * @return array{appointment_id: int, message: string, subject: ?string, service: ?string, date: ?string, time: ?string}|null
      */
     private function confirmation(string $token): ?array
     {
@@ -173,14 +191,15 @@ class PublicBookingController extends Controller
         return $confirmation;
     }
 
-    private function openAppointment(Company $company, Customer $customer, ?Pet $pet = null): ?Appointment
+    private function openAppointment(Company $company, Customer $customer, ?Pet $pet = null, ?Vehicle $vehicle = null): ?Appointment
     {
         $open = Appointment::withoutGlobalScopes()
-            ->with(['pet', 'service', 'tasks' => fn ($query) => $query->where('status', 'pending')->where('type', 'confirmation')])
+            ->with(['pet', 'vehicle', 'service', 'tasks' => fn ($query) => $query->where('status', 'pending')->where('type', 'confirmation')])
             ->where('company_id', $company->id)
             ->where('customer_id', $customer->id)
             ->whereIn('status', ['scheduled', 'confirmed', 'reschedule_requested'])
             ->when($pet, fn ($query) => $query->where('pet_id', $pet->id))
+            ->when($vehicle, fn ($query) => $query->where('vehicle_id', $vehicle->id))
             ->orderBy('scheduled_at')
             ->get();
 
@@ -219,7 +238,32 @@ class PublicBookingController extends Controller
         ]);
     }
 
-    private function queueConfirmation(Company $company, Customer $customer, Appointment $appointment, Service $service, Pet $pet, ContactTaskService $tasks): void
+    /**
+     * @param  array{plate: string, brand?: string|null, model?: string|null}  $data
+     */
+    private function resolveVehicle(Company $company, Customer $customer, array $data): Vehicle|RedirectResponse
+    {
+        $plate = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $data['plate']));
+        $existing = Vehicle::withoutGlobalScopes()->where('company_id', $company->id)->where('plate', $plate)->first();
+
+        if ($existing && (int) $existing->customer_id !== (int) $customer->id) {
+            return back()->withInput()->withErrors(['plate' => 'Esta placa já está cadastrada para outro cliente.']);
+        }
+
+        if ($existing) {
+            return $existing;
+        }
+
+        return Vehicle::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $customer->id,
+            'plate' => $plate,
+            'brand' => $data['brand'] ?? null,
+            'model' => $data['model'] ?? null,
+        ]);
+    }
+
+    private function queueConfirmation(Company $company, Customer $customer, Appointment $appointment, Service $service, ContactTaskService $tasks): void
     {
         $hours = $company->confirmation_hours ?: 24;
         $scheduledAt = $appointment->scheduled_at;
@@ -227,10 +271,12 @@ class PublicBookingController extends Controller
             return;
         }
 
+        $appointment->loadMissing(['pet', 'vehicle']);
         $tasks->create($company, $customer, 'confirmation', $scheduledAt->copy()->subHours($hours), [
             'appointment' => $appointment,
             'service' => $service,
-            'pet' => $pet,
+            'pet' => $appointment->pet,
+            'vehicle' => $appointment->vehicle,
             'cycle_key' => 'appointment:'.$appointment->id,
         ]);
     }

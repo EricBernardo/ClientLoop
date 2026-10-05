@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\MessageTemplates;
 
-use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Resources\MessageTemplates\Pages\CreateMessageTemplate;
 use App\Filament\Resources\MessageTemplates\Pages\EditMessageTemplate;
 use App\Filament\Resources\MessageTemplates\Pages\ListMessageTemplates;
@@ -27,8 +26,6 @@ use UnitEnum;
 
 class MessageTemplateResource extends Resource
 {
-    use LimitsToPetShop;
-
     protected static ?string $model = MessageTemplate::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
@@ -57,7 +54,7 @@ class MessageTemplateResource extends Resource
         return $schema->components([
             TextInput::make('name')->label('Nome')->required(),
             Select::make('type')->label('Uso')->options(InterfaceLabels::contactTypes())->searchable()->required(),
-            Textarea::make('body')->label('Mensagem')->required()->rows(7)->helperText('Variáveis: {{responsavel}}, {{pet}}, {{empresa}}, {{servico}}, {{data}}, {{horario}}, {{link_agendamento}} (link público de agendamento), {{link_confirmacao}} (confirmação do horário).')->columnSpanFull(),
+            Textarea::make('body')->label('Mensagem')->required()->rows(7)->helperText('Variáveis: {{responsavel}}, {{cliente}}, {{pet}}, {{veiculo}}, {{empresa}}, {{servico}}, {{data}}, {{horario}}, {{link_agendamento}} (link público de agendamento), {{link_confirmacao}} (confirmação do horário).')->columnSpanFull(),
             Toggle::make('active')->label('Ativo')->default(true),
         ]);
     }

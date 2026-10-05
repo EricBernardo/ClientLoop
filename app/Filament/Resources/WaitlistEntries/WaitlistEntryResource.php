@@ -2,11 +2,12 @@
 
 namespace App\Filament\Resources\WaitlistEntries;
 
-use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Resources\Appointments\AppointmentResource;
 use App\Filament\Resources\WaitlistEntries\Pages\ListWaitlistEntries;
 use App\Models\Pet;
+use App\Models\Vehicle;
 use App\Models\WaitlistEntry;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -30,8 +31,6 @@ use UnitEnum;
 
 class WaitlistEntryResource extends Resource
 {
-    use LimitsToPetShop;
-
     protected static ?string $model = WaitlistEntry::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;
@@ -59,15 +58,19 @@ class WaitlistEntryResource extends Resource
     {
         return $schema->components([
             Select::make('customer_id')
-                ->label('Responsável')
+                ->label(fn (): string => CurrentCompany::isAutomotive() ? 'Cliente' : 'Responsável')
                 ->relationship('customer', 'name')
                 ->searchable()
                 ->preload()
                 ->live()
-                ->afterStateUpdated(fn (Set $set): mixed => $set('pet_id', null))
+                ->afterStateUpdated(function (Set $set): void {
+                    $set('pet_id', null);
+                    $set('vehicle_id', null);
+                })
                 ->required(),
             Select::make('pet_id')
                 ->label('Pet')
+                ->visible(fn (): bool => CurrentCompany::isPetShop())
                 ->options(function (Get $get): array {
                     $customerId = $get('customer_id');
 
@@ -79,7 +82,24 @@ class WaitlistEntryResource extends Resource
                 ->preload()
                 ->disabled(fn (Get $get): bool => blank($get('customer_id')))
                 ->helperText('Escolha primeiro o responsável para ver os pets.')
-                ->required(),
+                ->required(fn (): bool => CurrentCompany::isPetShop()),
+            Select::make('vehicle_id')
+                ->label('Veículo')
+                ->visible(fn (): bool => CurrentCompany::isAutomotive())
+                ->options(function (Get $get): array {
+                    $customerId = $get('customer_id');
+
+                    if (blank($customerId)) {
+                        return [];
+                    }
+
+                    return Vehicle::query()->where('customer_id', $customerId)->orderBy('plate')->get()->mapWithKeys(fn (Vehicle $vehicle): array => [$vehicle->id => $vehicle->label()])->all();
+                })
+                ->searchable()
+                ->preload()
+                ->disabled(fn (Get $get): bool => blank($get('customer_id')))
+                ->helperText('Escolha primeiro o cliente para ver os veículos.')
+                ->required(fn (): bool => CurrentCompany::isAutomotive()),
             Select::make('service_id')
                 ->label('Serviço')
                 ->relationship('service', 'name', fn ($query) => $query->where('active', true))
@@ -107,8 +127,9 @@ class WaitlistEntryResource extends Resource
         return $table
             ->defaultSort('preferred_date')
             ->columns([
-                TextColumn::make('customer.name')->label('Responsável')->searchable(),
-                TextColumn::make('pet.name')->label('Pet')->searchable(),
+                TextColumn::make('customer.name')->label(fn (): string => CurrentCompany::isAutomotive() ? 'Cliente' : 'Responsável')->searchable(),
+                TextColumn::make('pet.name')->label('Pet')->searchable()->visible(fn (): bool => CurrentCompany::isPetShop()),
+                TextColumn::make('vehicle.plate')->label('Veículo')->formatStateUsing(fn (?string $state, WaitlistEntry $record): string => $record->vehicle?->label() ?? '—')->visible(fn (): bool => CurrentCompany::isAutomotive()),
                 TextColumn::make('service.name')->label('Serviço')->placeholder('—'),
                 TextColumn::make('preferred_date')->label('Data preferida')->date('d/m/Y')->sortable(),
                 TextColumn::make('preferred_time')->label('Horário')->placeholder('—'),
@@ -156,6 +177,7 @@ class WaitlistEntryResource extends Resource
                         return AppointmentResource::getUrl('create', array_filter([
                             'customer_id' => $record->customer_id,
                             'pet_id' => $record->pet_id,
+                            'vehicle_id' => $record->vehicle_id,
                             'service_id' => $record->service_id,
                             'scheduled_at' => $scheduledAt,
                         ]));

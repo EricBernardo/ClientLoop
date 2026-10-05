@@ -42,6 +42,7 @@ class ContactTaskService
             $this->quota->consumeTasks($company);
             $appointment = $links['appointment'] ?? null;
             $pet = $links['pet'] ?? $appointment?->pet;
+            $vehicle = $links['vehicle'] ?? $appointment?->vehicle;
 
             return ContactTask::withoutGlobalScopes()->create([
                 'company_id' => $company->id,
@@ -62,6 +63,7 @@ class ContactTaskService
                         $pet,
                         $company,
                         $this->confirmationUrl($appointment),
+                        $vehicle,
                     )
                     : null,
             ]);

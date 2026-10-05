@@ -9,10 +9,13 @@ use App\Enums\ReceiptPaymentMethod;
 use App\Enums\ReceiptStatus;
 use App\Enums\ServiceOrderStatus;
 use App\Filament\Resources\ServiceOrders\ServiceOrderResource;
+use App\Models\Appointment;
 use App\Models\CashEntry;
 use App\Models\Company;
 use App\Models\CompanySubscription;
+use App\Models\ContactTask;
 use App\Models\Customer;
+use App\Models\Groomer;
 use App\Models\Plan;
 use App\Models\Service;
 use App\Models\ServiceOrder;
@@ -21,7 +24,9 @@ use App\Models\ServiceReceipt;
 use App\Models\UsageRecord;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Services\DefaultMessageTemplateService;
 use App\Services\ServiceReceiptService;
+use App\Services\TemplateRenderer;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Notifications\DatabaseNotification as FilamentDatabaseNotification;
@@ -44,6 +49,10 @@ class DemoWorkshopSeeder extends Seeder
             'business_days' => [1, 2, 3, 4, 5],
             'business_starts_at_hour' => 8,
             'business_ends_at_hour' => 18,
+            'appointment_slot_minutes' => 60,
+            'confirmation_hours' => 24,
+            'reactivation_months' => 6,
+            'public_booking_token' => 'oficina-centro-demo',
         ]);
         $company->forceFill(['created_at' => $openedAt, 'updated_at' => now()])->save(['timestamps' => false]);
 
@@ -68,7 +77,7 @@ class DemoWorkshopSeeder extends Seeder
         );
         UsageRecord::withoutGlobalScopes()->updateOrCreate(
             ['company_id' => $company->id, 'period' => now()->format('Y-m')],
-            ['contacts_count' => 6, 'tasks_count' => 0],
+            ['contacts_count' => 6, 'tasks_count' => 1],
         );
 
         $services = $this->services($company);
@@ -79,8 +88,10 @@ class DemoWorkshopSeeder extends Seeder
         $helena = $this->customer($company, 'Helena Cruz', '5511981000005');
         $paulo = $this->customer($company, 'Paulo Reis', '5511981000006');
 
-        $this->order($company, $ana, $this->vehicle($company, $ana, 'ABC1D23', 'Volkswagen', 'Gol'), ServiceOrderStatus::Open, now(), $services['Troca de óleo'], '120.00', 'Cliente deixou o carro de manhã.');
-        $this->order($company, $bruno, $this->vehicle($company, $bruno, 'DEF2E34', 'Chevrolet', 'Onix'), ServiceOrderStatus::InProgress, now(), $services['Pastilhas'], '180.00', 'Pastilhas dianteiras em troca.');
+        $gol = $this->vehicle($company, $ana, 'ABC1D23', 'Volkswagen', 'Gol');
+        $onix = $this->vehicle($company, $bruno, 'DEF2E34', 'Chevrolet', 'Onix');
+        $this->order($company, $ana, $gol, ServiceOrderStatus::Open, now(), $services['Troca de óleo'], '120.00', 'Cliente deixou o carro de manhã.');
+        $this->order($company, $bruno, $onix, ServiceOrderStatus::InProgress, now(), $services['Pastilhas'], '180.00', 'Pastilhas dianteiras em troca.');
         $readyToday = $this->order($company, $carla, $this->vehicle($company, $carla, 'GHI3F45', 'Hyundai', 'HB20'), ServiceOrderStatus::Ready, now(), $services['Alinhamento'], '150.00', 'Alinhamento concluído hoje.');
         $readyWaiting = $this->order($company, $diego, $this->vehicle($company, $diego, 'JKL4G56', 'Fiat', 'Uno'), ServiceOrderStatus::Ready, now()->subDay(), $services['Higienização'], '90.00', 'Pronto desde ontem.');
         $deliveredUnpaid = $this->order($company, $helena, $this->vehicle($company, $helena, 'MNO5H67', 'Honda', 'Civic'), ServiceOrderStatus::Delivered, now()->subDays(2), $services['Revisão'], '420.00', 'Entregue e ainda a prazo.');
@@ -110,6 +121,7 @@ class DemoWorkshopSeeder extends Seeder
 
         $this->notify($owner, $readyWaiting, 'Veículo pronto parado', 'JKL4G56 · Fiat Uno de Diego Ramos continua pronto para retirada.', now()->subDay()->setTime(8, 0));
         $this->notify($owner, $deliveredUnpaid, 'Entregue e ainda a receber', 'MNO5H67 · Honda Civic de Helena Cruz foi entregue e o recibo continua pendente.', now()->subDay()->setTime(8, 5));
+        $this->seedSchedule($company, $services, $ana, $gol, $bruno, $onix);
     }
 
     private function purge(Company $company, User $owner): void
@@ -118,6 +130,9 @@ class DemoWorkshopSeeder extends Seeder
             ->where('notifiable_type', User::class)
             ->where('notifiable_id', $owner->id)
             ->delete();
+        ContactTask::withoutGlobalScopes()->where('company_id', $company->id)->delete();
+        Appointment::withoutGlobalScopes()->where('company_id', $company->id)->delete();
+        Groomer::withoutGlobalScopes()->where('company_id', $company->id)->delete();
         CashEntry::withoutGlobalScopes()->where('company_id', $company->id)->delete();
         ServiceReceipt::withoutGlobalScopes()->where('company_id', $company->id)->delete();
         ServiceOrderItem::withoutGlobalScopes()->where('company_id', $company->id)->delete();
@@ -146,11 +161,71 @@ class DemoWorkshopSeeder extends Seeder
                 'name' => $name,
                 'suggested_price' => $price,
                 'duration_minutes' => 60,
+                'return_interval_months' => $name === 'Troca de óleo' ? 6 : null,
                 'active' => true,
             ]);
         }
 
         return $services;
+    }
+
+    /** @param  array<string, Service>  $services */
+    private function seedSchedule(Company $company, array $services, Customer $ana, Vehicle $gol, Customer $bruno, Vehicle $onix): void
+    {
+        $mechanic = Groomer::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'name' => 'Roberto',
+            'active' => true,
+        ]);
+        $templates = app(DefaultMessageTemplateService::class)->provision($company);
+        $today = now()->startOfDay()->setTime(10, 0);
+        $tomorrow = now()->addDay()->startOfDay()->setTime(11, 0);
+        $todayAppointment = Appointment::withoutEvents(fn (): Appointment => Appointment::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $ana->id,
+            'vehicle_id' => $gol->id,
+            'service_id' => $services['Troca de óleo']->id,
+            'groomer_id' => $mechanic->id,
+            'scheduled_at' => $today,
+            'duration_minutes' => 60,
+            'ends_at' => $today->copy()->addHour(),
+            'status' => 'scheduled',
+            'confirmation_token' => 'oficina-demo-hoje',
+        ]));
+        Appointment::withoutEvents(fn (): Appointment => Appointment::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $bruno->id,
+            'vehicle_id' => $onix->id,
+            'service_id' => $services['Pastilhas']->id,
+            'groomer_id' => $mechanic->id,
+            'scheduled_at' => $tomorrow,
+            'duration_minutes' => 60,
+            'ends_at' => $tomorrow->copy()->addHour(),
+            'status' => 'confirmed',
+            'confirmation_token' => 'oficina-demo-amanha',
+        ]));
+
+        ContactTask::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $ana->id,
+            'appointment_id' => $todayAppointment->id,
+            'message_template_id' => $templates['Confirmação de horário']->id,
+            'type' => 'confirmation',
+            'priority' => 'high',
+            'due_at' => $today->copy()->subHours(24),
+            'cycle_key' => 'appointment:'.$todayAppointment->id,
+            'rendered_message' => app(TemplateRenderer::class)->render(
+                $templates['Confirmação de horário']->body,
+                $ana,
+                $services['Troca de óleo'],
+                $today,
+                null,
+                $company,
+                route('appointment.confirm.show', 'oficina-demo-hoje'),
+                $gol,
+            ),
+            'status' => 'pending',
+        ]);
     }
 
     private function customer(Company $company, string $name, string $phone): Customer

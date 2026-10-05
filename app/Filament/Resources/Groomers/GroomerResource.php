@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources\Groomers;
 
-use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Resources\Groomers\Pages\CreateGroomer;
 use App\Filament\Resources\Groomers\Pages\EditGroomer;
 use App\Filament\Resources\Groomers\Pages\ListGroomers;
 use App\Models\Groomer;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -25,8 +25,6 @@ use UnitEnum;
 
 class GroomerResource extends Resource
 {
-    use LimitsToPetShop;
-
     protected static ?string $model = Groomer::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedScissors;
@@ -37,17 +35,17 @@ class GroomerResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'Tosadores';
+        return CurrentCompany::isAutomotive() ? 'Mecânicos' : 'Tosadores';
     }
 
     public static function getModelLabel(): string
     {
-        return 'tosador';
+        return CurrentCompany::isAutomotive() ? 'mecânico' : 'tosador';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'tosadores';
+        return CurrentCompany::isAutomotive() ? 'mecânicos' : 'tosadores';
     }
 
     public static function form(Schema $schema): Schema
@@ -69,10 +67,10 @@ class GroomerResource extends Resource
                 EditAction::make()->color('info')->url(fn (Groomer $record): string => self::getUrl('edit', ['record' => $record])),
                 DeleteAction::make(),
             ])
-            ->emptyStateHeading('Nenhum tosador cadastrado')
+            ->emptyStateHeading(fn (): string => CurrentCompany::isAutomotive() ? 'Nenhum mecânico cadastrado' : 'Nenhum tosador cadastrado')
             ->emptyStateDescription('Cadastre quem realiza os atendimentos para poder atribuir na agenda.')
             ->emptyStateActions([
-                Action::make('create')->label('Novo tosador')->url(static::getUrl('create')),
+                Action::make('create')->label(fn (): string => CurrentCompany::isAutomotive() ? 'Novo mecânico' : 'Novo tosador')->url(static::getUrl('create')),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

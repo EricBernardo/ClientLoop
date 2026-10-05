@@ -70,7 +70,7 @@
                     <h3>{{ $day->translatedFormat('l, d/m') }}</h3>
                     @forelse ($events as $appointment)
                         <a class="pet-calendar__item" href="{{ \App\Filament\Resources\Appointments\AppointmentResource::getUrl('edit', ['record' => $appointment]) }}">
-                            <strong>{{ $appointment->scheduled_at->format('H:i') }} · {{ $appointment->pet?->name ?? 'Pet não informado' }}</strong>
+                            <strong>{{ $appointment->scheduled_at->format('H:i') }} · {{ $appointment->vehicle?->label() ?? $appointment->pet?->name ?? 'Não informado' }}</strong>
                             <span>{{ $appointment->customer->name }} · {{ $appointment->service?->name ?? 'Serviço' }} · {{ \App\Support\InterfaceLabels::appointmentStatus($appointment->status) }}</span>
                         </a>
                     @empty
@@ -105,7 +105,7 @@
                         @foreach ($events as $appointment)
                             @php($position = $this->position($appointment))
                             <a class="calendar-event calendar-event--{{ $appointment->status }}" style="top:{{ $position['top'] }}%;height:{{ $position['height'] }}%" href="{{ \App\Filament\Resources\Appointments\AppointmentResource::getUrl('edit', ['record' => $appointment]) }}">
-                                <div class="calendar-event__name">{{ $appointment->pet?->name ?? 'Pet não informado' }}</div>
+                                <div class="calendar-event__name">{{ $appointment->vehicle?->label() ?? $appointment->pet?->name ?? 'Não informado' }}</div>
                                 <div class="calendar-event__meta">{{ $appointment->customer->name }} · {{ $appointment->service?->name ?? 'Serviço' }}</div>
                                 <div class="calendar-event__status">{{ $appointment->scheduled_at->format('H:i') }} · {{ $appointment->duration_minutes }} min · {{ \App\Support\InterfaceLabels::appointmentStatus($appointment->status) }}</div>
                             </a>

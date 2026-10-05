@@ -329,7 +329,7 @@ class PetShopFlowTest extends TestCase
                 'data.duration_minutes' => 60,
             ])
             ->call('create')
-            ->assertHasErrors(['data.scheduled_at' => 'Não há atendimento neste dia. Escolha um dia de segunda a sábado.']);
+            ->assertHasErrors(['data.scheduled_at' => 'Não há atendimento neste dia. Escolha um dia de expediente.']);
     }
 
     public function test_service_price_mask_is_normalized_before_saving(): void

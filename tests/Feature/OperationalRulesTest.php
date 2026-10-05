@@ -12,6 +12,7 @@ use App\Models\ContactTask;
 use App\Models\Customer;
 use App\Models\ImportRun;
 use App\Models\MessageTemplate;
+use App\Models\Pet;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\ContactTaskService;
@@ -33,7 +34,7 @@ class OperationalRulesTest extends TestCase
         [$company] = $this->company();
         $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Cliente da agenda', 'phone' => '5511980000001']);
         $inactive = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Cliente inativo', 'phone' => '5511980000004', 'last_activity_at' => now()->subMonths(7)]);
-        $scheduled = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'scheduled_at' => now()->addHours(12), 'status' => 'scheduled']);
+        $scheduled = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'pet_id' => $this->pet($company, $customer)->id, 'scheduled_at' => now()->setTime(10, 0), 'status' => 'scheduled']);
 
         Artisan::call('clientloop:generate-tasks');
         Artisan::call('clientloop:generate-tasks');
@@ -47,10 +48,10 @@ class OperationalRulesTest extends TestCase
         [$company, $user] = $this->company();
         $this->actingAs($user);
         $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Ana', 'phone' => '5511980000002']);
-        $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'scheduled_at' => now()->addDay(), 'status' => 'scheduled']);
+        $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'pet_id' => $this->pet($company, $customer)->id, 'scheduled_at' => now()->addDay()->setTime(10, 0), 'status' => 'scheduled']);
         $task = app(ContactTaskService::class)->create($company, $customer, 'confirmation', now(), ['appointment' => $appointment, 'cycle_key' => 'appointment:'.$appointment->id]);
 
-        app(ContactTaskService::class)->reschedule($appointment, now()->addDays(3));
+        app(ContactTaskService::class)->reschedule($appointment, now()->addDays(3)->setTime(10, 0));
 
         $this->assertSame('cancelled', $task->fresh()->status);
         $this->assertSame('scheduled', $appointment->fresh()->status);
@@ -62,10 +63,10 @@ class OperationalRulesTest extends TestCase
         [$company, $user] = $this->company();
         $this->actingAs($user);
         $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Ana', 'phone' => '5511980000002']);
-        $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'scheduled_at' => now()->addDays(2), 'status' => 'scheduled']);
+        $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'pet_id' => $this->pet($company, $customer)->id, 'scheduled_at' => now()->addDays(2)->setTime(10, 0), 'status' => 'scheduled']);
         $task = app(ContactTaskService::class)->create($company, $customer, 'confirmation', now(), ['appointment' => $appointment, 'cycle_key' => 'appointment:'.$appointment->id]);
 
-        app(ContactTaskService::class)->reschedule($appointment, now()->addHours(6));
+        app(ContactTaskService::class)->reschedule($appointment, now()->setTime(14, 0));
         Artisan::call('clientloop:generate-tasks');
         Artisan::call('clientloop:generate-tasks');
 
@@ -79,7 +80,7 @@ class OperationalRulesTest extends TestCase
         [$company, $user] = $this->company();
         $this->actingAs($user);
         $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Ana', 'phone' => '5511980000008']);
-        $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'scheduled_at' => now()->addHours(12), 'status' => 'scheduled']);
+        $appointment = Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'pet_id' => $this->pet($company, $customer)->id, 'scheduled_at' => now()->setTime(10, 0), 'status' => 'scheduled']);
 
         Artisan::call('clientloop:generate-tasks');
         $task = ContactTask::withoutGlobalScopes()->where('appointment_id', $appointment->id)->where('type', 'confirmation')->firstOrFail();
@@ -131,7 +132,7 @@ class OperationalRulesTest extends TestCase
         [$company, $user] = $this->company();
         $this->actingAs($user);
         $customer = Customer::withoutGlobalScopes()->create(['company_id' => $company->id, 'name' => 'Cliente da tela', 'phone' => '5511980000020']);
-        Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'scheduled_at' => now()->addDay(), 'status' => 'scheduled']);
+        Appointment::withoutGlobalScopes()->create(['company_id' => $company->id, 'customer_id' => $customer->id, 'pet_id' => $this->pet($company, $customer)->id, 'scheduled_at' => now()->addDay()->setTime(10, 0), 'status' => 'scheduled']);
 
         $this->get('/admin/campaigns')->assertOk()->assertSee('Campanhas');
         $this->get('/admin/imports')
@@ -273,9 +274,19 @@ class OperationalRulesTest extends TestCase
             ->assertSet('mode', 'day');
     }
 
+    private function pet(Company $company, Customer $customer): Pet
+    {
+        return Pet::withoutGlobalScopes()->create([
+            'company_id' => $company->id,
+            'customer_id' => $customer->id,
+            'name' => 'Thor',
+        ]);
+    }
+
     /** @return array{Company, User} */
     private function company(): array
     {
+        $this->travelTo('2026-10-05 08:00:00');
         $plan = Plan::create(['name' => 'Teste', 'contact_limit' => 100, 'task_limit' => 100, 'is_default' => true]);
         $company = Company::create(['name' => 'Empresa teste '.fake()->uuid(), 'slug' => fake()->unique()->slug(), 'status' => 'active']);
         CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'active']);

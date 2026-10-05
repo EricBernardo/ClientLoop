@@ -4,10 +4,14 @@ namespace Tests\Feature;
 
 use App\Enums\CompanyVertical;
 use App\Filament\Pages\Calendar;
+use App\Filament\Resources\Appointments\AppointmentResource;
+use App\Filament\Resources\Campaigns\CampaignResource;
+use App\Filament\Resources\ContactTasks\ContactTaskResource;
 use App\Filament\Resources\Customers\CustomerResource;
 use App\Filament\Resources\PetPackages\PetPackageResource;
 use App\Filament\Resources\Pets\PetResource;
 use App\Filament\Resources\Services\Pages\CreateService;
+use App\Filament\Resources\WaitlistEntries\WaitlistEntryResource;
 use App\Models\Company;
 use App\Models\CompanySubscription;
 use App\Models\MessageTemplate;
@@ -70,7 +74,10 @@ class AutomotiveVerticalTest extends TestCase
         $user = User::where('email', 'oficina@clientloop.test')->firstOrFail();
 
         $this->assertSame(CompanyVertical::Automotive, $user->company->vertical);
-        $this->assertSame(0, MessageTemplate::withoutGlobalScopes()->where('company_id', $user->company_id)->count());
+        $this->assertSame(
+            ['Confirmação de horário', 'Hora de voltar', 'Reativação'],
+            MessageTemplate::withoutGlobalScopes()->where('company_id', $user->company_id)->orderBy('id')->pluck('name')->all(),
+        );
     }
 
     public function test_automotive_company_cannot_open_pet_shop_pages(): void
@@ -81,11 +88,14 @@ class AutomotiveVerticalTest extends TestCase
 
         $this->assertFalse(PetResource::canAccess());
         $this->assertFalse(PetPackageResource::canAccess());
-        $this->assertFalse(Calendar::canAccess());
+        $this->assertTrue(Calendar::canAccess());
+        $this->assertTrue(AppointmentResource::canAccess());
+        $this->assertTrue(ContactTaskResource::canAccess());
+        $this->assertTrue(CampaignResource::canAccess());
+        $this->assertTrue(WaitlistEntryResource::canAccess());
 
         $this->get('/admin/pets')->assertForbidden();
         $this->get('/admin/pet-packages')->assertForbidden();
-        $this->get('/admin/calendar')->assertForbidden();
         $this->get('/admin/how-to-use')->assertForbidden();
     }
 
@@ -111,6 +121,7 @@ class AutomotiveVerticalTest extends TestCase
             ->fillForm([
                 'name' => 'Alinhamento',
                 'suggested_price' => '120,00',
+                'duration_minutes' => 60,
                 'active' => true,
             ])
             ->call('create')
@@ -130,15 +141,6 @@ class AutomotiveVerticalTest extends TestCase
         $this->actingAs($user)
             ->get(route('imports.template', ['type' => 'customers']))
             ->assertForbidden();
-    }
-
-    public function test_public_booking_is_unavailable_for_an_automotive_company(): void
-    {
-        [$company] = $this->company(CompanyVertical::Automotive);
-        $company->forceFill(['public_booking_token' => 'oficina-token', 'status' => 'active'])->save();
-
-        $this->get(route('booking.show', 'oficina-token'))->assertNotFound();
-        $this->post(route('booking.store', 'oficina-token'), [])->assertNotFound();
     }
 
     /** @return array{Company, User} */

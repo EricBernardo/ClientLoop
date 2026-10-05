@@ -48,9 +48,7 @@ class RegistrationController extends Controller
             );
             CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'trial', 'starts_at' => now(), 'ends_at' => now()->addDays(14)]);
 
-            if ($company->isPetShop()) {
-                $messageTemplates->provision($company);
-            }
+            $messageTemplates->provision($company);
 
             return User::create([
                 'company_id' => $company->id,

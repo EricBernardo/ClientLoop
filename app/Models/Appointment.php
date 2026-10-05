@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 class Appointment extends TenantModel
 {
-    protected $fillable = ['company_id', 'customer_id', 'pet_id', 'service_id', 'pet_package_id', 'groomer_id', 'scheduled_at', 'duration_minutes', 'ends_at', 'status', 'recurrence_group', 'confirmation_token'];
+    protected $fillable = ['company_id', 'customer_id', 'pet_id', 'vehicle_id', 'service_id', 'pet_package_id', 'groomer_id', 'scheduled_at', 'duration_minutes', 'ends_at', 'status', 'recurrence_group', 'confirmation_token'];
 
     protected function casts(): array
     {
@@ -31,6 +31,11 @@ class Appointment extends TenantModel
     public function pet(): BelongsTo
     {
         return $this->belongsTo(Pet::class);
+    }
+
+    public function vehicle(): BelongsTo
+    {
+        return $this->belongsTo(Vehicle::class);
     }
 
     public function package(): BelongsTo
@@ -71,13 +76,11 @@ class Appointment extends TenantModel
                 $appointment->duration_minutes = $appointment->service?->duration_minutes ?? 60;
             }
             $appointment->ends_at = $appointment->scheduled_at->copy()->addMinutes($appointment->duration_minutes);
-            if ($appointment->pet_id && ! Pet::withoutGlobalScopes()->whereKey($appointment->pet_id)->where('company_id', $appointment->company_id ?: auth()->user()?->company_id)->where('customer_id', $appointment->customer_id)->exists()) {
-                throw ValidationException::withMessages(['pet_id' => 'Escolha um pet que pertença ao responsável selecionado.']);
-            }
+            $appointment->ensureSubject();
             if ($appointment->pet_package_id && (! $appointment->exists || $appointment->isDirty(['pet_package_id', 'pet_id', 'service_id']))) {
                 app(PackageService::class)->assertCanUse($appointment->pet_package_id, $appointment->pet_id, $appointment->service_id);
             }
-            if (! $appointment->exists || $appointment->isDirty(['scheduled_at', 'duration_minutes', 'pet_id'])) {
+            if (! $appointment->exists || $appointment->isDirty(['scheduled_at', 'duration_minutes', 'pet_id', 'vehicle_id'])) {
                 $appointment->ensureBusinessHours();
             }
             $appointment->ensureAvailability();
@@ -130,9 +133,43 @@ class Appointment extends TenantModel
         }
     }
 
+    public function ensureSubject(): void
+    {
+        $companyId = $this->company_id ?: auth()->user()?->company_id;
+        $company = $companyId ? Company::query()->find($companyId) : null;
+
+        if ($company?->isAutomotive()) {
+            $belongs = $this->vehicle_id && Vehicle::withoutGlobalScopes()
+                ->whereKey($this->vehicle_id)
+                ->where('company_id', $companyId)
+                ->where('customer_id', $this->customer_id)
+                ->exists();
+
+            if (! $belongs) {
+                throw ValidationException::withMessages(['vehicle_id' => 'Escolha um veículo do cliente escolhido.']);
+            }
+
+            return;
+        }
+
+        if (! $company?->isPetShop()) {
+            return;
+        }
+
+        $belongs = $this->pet_id && Pet::withoutGlobalScopes()
+            ->whereKey($this->pet_id)
+            ->where('company_id', $companyId)
+            ->where('customer_id', $this->customer_id)
+            ->exists();
+
+        if (! $belongs) {
+            throw ValidationException::withMessages(['pet_id' => 'Escolha um pet que pertença ao responsável selecionado.']);
+        }
+    }
+
     public function ensureBusinessHours(): void
     {
-        if (! $this->scheduled_at || ! $this->pet_id) {
+        if (! $this->scheduled_at) {
             return;
         }
 
@@ -152,7 +189,7 @@ class Appointment extends TenantModel
         $closesAt = $scheduledAt->copy()->setTime($endsAtHour, 0);
 
         if (! in_array($scheduledAt->dayOfWeekIso, $businessDays, true)) {
-            throw ValidationException::withMessages(['scheduled_at' => 'Não há atendimento neste dia. Escolha um dia de segunda a sábado.']);
+            throw ValidationException::withMessages(['scheduled_at' => 'Não há atendimento neste dia. Escolha um dia de expediente.']);
         }
         if ($scheduledAt->minute % $slotMinutes !== 0 || $scheduledAt->second !== 0) {
             $examples = match ($slotMinutes) {

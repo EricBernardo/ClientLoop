@@ -246,6 +246,10 @@ class AutomotiveWorkshopTest extends TestCase
                 'business_starts_at_hour' => 8,
                 'business_ends_at_hour' => 18,
                 'timezone' => 'America/Sao_Paulo',
+                'appointment_slot_minutes' => 60,
+                'confirmation_hours' => 24,
+                'reactivation_months' => 6,
+                'business_breaks' => [],
             ])
             ->call('save')
             ->assertHasNoFormErrors();
@@ -284,14 +288,16 @@ class AutomotiveWorkshopTest extends TestCase
         $values = collect($this->overviewStats())->mapWithKeys(fn ($stat): array => [$stat->getLabel() => $stat->getValue()])->all();
 
         $this->assertSame([
+            'Agenda de hoje' => '0',
+            'Tarefas pendentes' => '0',
             'Prontas para entrega' => '2',
             'Em andamento' => '1',
             'Na fila' => '1',
             'A receber' => 'R$ 40,00',
             'Caixa do mês' => 'R$ 80,00',
         ], $values);
-        $this->assertSame('1 recibo pendente', $this->overviewStats()[3]->getDescription());
-        $this->assertSame('Entradas R$ 130,00 · Saídas R$ 50,00', $this->overviewStats()[4]->getDescription());
+        $this->assertSame('1 recibo pendente', $this->overviewStats()[5]->getDescription());
+        $this->assertSame('Entradas R$ 130,00 · Saídas R$ 50,00', $this->overviewStats()[6]->getDescription());
     }
 
     public function test_automotive_plan_usage_counts_customers_only(): void
@@ -301,7 +307,7 @@ class AutomotiveWorkshopTest extends TestCase
 
         $labels = collect($this->planUsageStats())->map(fn ($stat) => $stat->getLabel())->all();
 
-        $this->assertSame(['Clientes no mês'], $labels);
+        $this->assertSame(['Clientes no mês', 'Tarefas no mês'], $labels);
     }
 
     /** @return array<int, Stat> */

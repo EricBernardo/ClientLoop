@@ -84,8 +84,18 @@ class CompanyOverview extends StatsOverviewWidget
             ->whereDate('occurred_on', '<=', $until)
             ->sum('amount');
         $balance = $income - $expense;
+        $todayAppointments = Appointment::query()->whereDate('scheduled_at', today())->whereNotIn('status', ['cancelled', 'no_show'])->count();
+        $pendingTasks = ContactTask::query()->where('status', 'pending')->count();
 
         return [
+            Stat::make('Agenda de hoje', (string) $todayAppointments)
+                ->description('Horários marcados para hoje')
+                ->url(Calendar::getUrl(['date' => today()->toDateString(), 'mode' => 'day']))
+                ->color($todayAppointments ? 'primary' : 'gray'),
+            Stat::make('Tarefas pendentes', (string) $pendingTasks)
+                ->description('Confirmações e retornos para o WhatsApp')
+                ->url(ContactTaskResource::getUrl('index'))
+                ->color($pendingTasks ? 'warning' : 'success'),
             Stat::make('Prontas para entrega', (string) $ready)
                 ->description('Veículos prontos para o cliente retirar')
                 ->url($this->ordersUrl(ServiceOrderStatus::Ready))

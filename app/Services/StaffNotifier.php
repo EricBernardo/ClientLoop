@@ -227,10 +227,10 @@ class StaffNotifier
 
     private function appointmentSummary(Appointment $appointment): string
     {
-        $appointment->loadMissing(['customer', 'pet', 'company']);
+        $appointment->loadMissing(['customer', 'pet', 'vehicle', 'company']);
         $customer = $appointment->customer?->name ?? 'Responsável';
-        $pet = $appointment->pet?->name;
-        $who = $pet ? "{$pet} ({$customer})" : $customer;
+        $subject = $appointment->vehicle?->label() ?? $appointment->pet?->name;
+        $who = $subject ? "{$subject} ({$customer})" : $customer;
         $timezone = $appointment->company?->timezone ?: config('app.timezone');
         $when = $appointment->scheduled_at->timezone($timezone)->format('d/m/Y H:i');
 

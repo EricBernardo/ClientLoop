@@ -86,12 +86,12 @@ class CustomerResource extends Resource
                     ->formatStateUsing(fn (?string $state, Customer $record): ?string => $record->opted_out_at ? $state : null),
             ])
             ->filters([
-                TernaryFilter::make('opted_out_at')->label('Contato bloqueado')->visible(fn (): bool => CurrentCompany::isPetShop()),
+                TernaryFilter::make('opted_out_at')->label('Contato bloqueado'),
             ])
             ->recordActions([
-                Action::make('ajustarRetorno')->label('Ajustar retorno previsto')->icon('heroicon-o-calendar-days')->visible(fn (): bool => CurrentCompany::isPetShop())->fillForm(fn (Customer $record): array => ['next_return_at' => $record->next_return_at])->form([HourlyDateTimePicker::make('next_return_at')->label('Data e horário do retorno')->helperText('Normalmente calculado ao concluir um atendimento. Ajuste somente para uma exceção.')])->action(fn (Customer $record, array $data) => $record->update(['next_return_at' => $data['next_return_at'] ?? null])),
-                Action::make('bloquearContato')->label('Bloquear contato')->color('warning')->icon('heroicon-o-no-symbol')->visible(fn (Customer $record): bool => CurrentCompany::isPetShop() && $record->can_contact)->form([Textarea::make('note')->label('Motivo ou observação')->required()])->requiresConfirmation()->action(fn (Customer $record, array $data) => app(ContactTaskService::class)->optOut($record, $data['note'])),
-                Action::make('novoConsentimento')->label('Registrar novo consentimento')->visible(fn (Customer $record): bool => CurrentCompany::isPetShop() && ! $record->can_contact)->form([Textarea::make('consent')->label('Como e quando a pessoa autorizou novo contato?')->required()])->action(fn (Customer $record, array $data) => app(ContactTaskService::class)->optIn($record, $data['consent'])),
+                Action::make('ajustarRetorno')->label('Ajustar retorno previsto')->icon('heroicon-o-calendar-days')->fillForm(fn (Customer $record): array => ['next_return_at' => $record->next_return_at])->form([HourlyDateTimePicker::make('next_return_at')->label('Data e horário do retorno')->helperText('Normalmente calculado ao concluir um atendimento. Ajuste somente para uma exceção.')])->action(fn (Customer $record, array $data) => $record->update(['next_return_at' => $data['next_return_at'] ?? null])),
+                Action::make('bloquearContato')->label('Bloquear contato')->color('warning')->icon('heroicon-o-no-symbol')->visible(fn (Customer $record): bool => $record->can_contact)->form([Textarea::make('note')->label('Motivo ou observação')->required()])->requiresConfirmation()->action(fn (Customer $record, array $data) => app(ContactTaskService::class)->optOut($record, $data['note'])),
+                Action::make('novoConsentimento')->label('Registrar novo consentimento')->visible(fn (Customer $record): bool => ! $record->can_contact)->form([Textarea::make('consent')->label('Como e quando a pessoa autorizou novo contato?')->required()])->action(fn (Customer $record, array $data) => app(ContactTaskService::class)->optIn($record, $data['consent'])),
                 Action::make('exportarLgpd')
                     ->label('Exportar LGPD')
                     ->icon('heroicon-o-arrow-down-tray')

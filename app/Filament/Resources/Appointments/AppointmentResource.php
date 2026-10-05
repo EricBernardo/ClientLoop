@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Appointments;
 
-use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Forms\Components\HourlyDateTimePicker;
 use App\Filament\Pages\Calendar;
 use App\Filament\Resources\Appointments\Pages\CreateAppointment;
@@ -13,9 +12,11 @@ use App\Models\Groomer;
 use App\Models\Pet;
 use App\Models\PetPackage;
 use App\Models\Service;
+use App\Models\Vehicle;
 use App\Services\AppointmentService;
 use App\Services\ContactTaskService;
 use App\Services\PackageService;
+use App\Support\CurrentCompany;
 use App\Support\InterfaceLabels;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -41,8 +42,6 @@ use UnitEnum;
 
 class AppointmentResource extends Resource
 {
-    use LimitsToPetShop;
-
     protected static ?string $model = Appointment::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
@@ -75,20 +74,32 @@ class AppointmentResource extends Resource
     {
         return $schema
             ->components([
-                Select::make('customer_id')->label('Responsável')->relationship('customer', 'name')->searchable()->preload()->live()->afterStateUpdated(function (Set $set): void {
+                Select::make('customer_id')->label(fn (): string => CurrentCompany::isAutomotive() ? 'Cliente' : 'Responsável')->relationship('customer', 'name')->searchable()->preload()->live()->afterStateUpdated(function (Set $set): void {
                     $set('pet_id', null);
+                    $set('vehicle_id', null);
                     $set('service_id', null);
                     $set('pet_package_id', null);
                 })->default(fn (): ?string => request('customer_id'))->required(),
-                Select::make('pet_id')->label('Pet')->options(function (Get $get): array {
+                Select::make('pet_id')->label('Pet')->visible(fn (): bool => CurrentCompany::isPetShop())->options(function (Get $get): array {
                     $customerId = $get('customer_id');
 
                     return blank($customerId) ? [] : Pet::query()->where('customer_id', $customerId)->orderBy('name')->pluck('name', 'id')->all();
                 })->searchable()->preload()->live()->disabled(fn (Get $get): bool => blank($get('customer_id')))->afterStateUpdated(function (Set $set): void {
                     $set('service_id', null);
                     $set('pet_package_id', null);
-                })->default(fn (): ?string => request('pet_id'))->required(fn (?Appointment $record): bool => $record === null)->helperText('Escolha primeiro o responsável para ver os pets.'),
-                Select::make('service_id')->label('Serviço')->options(fn (Get $get): array => blank($get('pet_id')) ? [] : Service::query()->where('active', true)->orderBy('name')->pluck('name', 'id')->all())->searchable()->preload()->live()->disabled(fn (Get $get): bool => blank($get('pet_id')))->default(fn (): ?string => request('service_id'))->afterStateUpdated(function (Set $set, ?string $state): void {
+                })->default(fn (): ?string => request('pet_id'))->required(fn (?Appointment $record): bool => CurrentCompany::isPetShop() && $record === null)->helperText('Escolha primeiro o responsável para ver os pets.'),
+                Select::make('vehicle_id')->label('Veículo')->visible(fn (): bool => CurrentCompany::isAutomotive())->options(function (Get $get): array {
+                    $customerId = $get('customer_id');
+
+                    if (blank($customerId)) {
+                        return [];
+                    }
+
+                    return Vehicle::query()->where('customer_id', $customerId)->orderBy('plate')->get()->mapWithKeys(fn (Vehicle $vehicle): array => [$vehicle->id => $vehicle->label()])->all();
+                })->searchable()->preload()->live()->disabled(fn (Get $get): bool => blank($get('customer_id')))->afterStateUpdated(function (Set $set): void {
+                    $set('service_id', null);
+                })->default(fn (): ?string => request('vehicle_id'))->required(fn (?Appointment $record): bool => CurrentCompany::isAutomotive() && $record === null)->helperText('Escolha primeiro o cliente para ver os veículos.'),
+                Select::make('service_id')->label('Serviço')->options(fn (Get $get): array => self::subjectChosen($get) ? Service::query()->where('active', true)->orderBy('name')->pluck('name', 'id')->all() : [])->searchable()->preload()->live()->disabled(fn (Get $get): bool => ! self::subjectChosen($get))->default(fn (): ?string => request('service_id'))->afterStateUpdated(function (Set $set, ?string $state): void {
                     $set('pet_package_id', null);
                     $service = Service::query()->find($state);
                     if ($service) {
@@ -97,6 +108,7 @@ class AppointmentResource extends Resource
                 })->required(),
                 Select::make('pet_package_id')
                     ->label('Pacote (opcional)')
+                    ->visible(fn (): bool => CurrentCompany::isPetShop())
                     ->options(function (Get $get): array {
                         $petId = $get('pet_id');
                         $serviceId = $get('service_id');
@@ -150,7 +162,7 @@ class AppointmentResource extends Resource
                         return 'Escolha pet e serviço para ver os pacotes compatíveis.';
                     }),
                 Select::make('groomer_id')
-                    ->label('Tosador')
+                    ->label(fn (): string => CurrentCompany::isAutomotive() ? 'Mecânico' : 'Tosador')
                     ->options(fn (): array => Groomer::query()->where('active', true)->orderBy('name')->pluck('name', 'id')->all())
                     ->searchable()
                     ->preload()
@@ -192,7 +204,13 @@ class AppointmentResource extends Resource
                 };
             })
             ->columns([
-                TextColumn::make('pet.name')->label('Pet')->searchable(), TextColumn::make('customer.name')->label('Responsável')->searchable(), TextColumn::make('service.name')->label('Serviço'), TextColumn::make('scheduled_at')->label('Data e horário')->dateTime('d/m H:i')->sortable(), TextColumn::make('duration_minutes')->label('Duração')->suffix(' min'), TextColumn::make('status')->label('Situação')->badge()->color(fn (?string $state): string => InterfaceLabels::appointmentStatusColor($state))->formatStateUsing(fn (?string $state): string => InterfaceLabels::appointmentStatus($state)),
+                TextColumn::make('pet.name')->label('Pet')->searchable()->visible(fn (): bool => CurrentCompany::isPetShop()),
+                TextColumn::make('vehicle.plate')->label('Veículo')->formatStateUsing(fn (?string $state, Appointment $record): string => $record->vehicle?->label() ?? '—')->visible(fn (): bool => CurrentCompany::isAutomotive()),
+                TextColumn::make('customer.name')->label(fn (): string => CurrentCompany::isAutomotive() ? 'Cliente' : 'Responsável')->searchable(),
+                TextColumn::make('service.name')->label('Serviço'),
+                TextColumn::make('scheduled_at')->label('Data e horário')->dateTime('d/m H:i')->sortable(),
+                TextColumn::make('duration_minutes')->label('Duração')->suffix(' min'),
+                TextColumn::make('status')->label('Situação')->badge()->color(fn (?string $state): string => InterfaceLabels::appointmentStatusColor($state))->formatStateUsing(fn (?string $state): string => InterfaceLabels::appointmentStatus($state)),
             ])
             ->filters([
                 SelectFilter::make('status')->options(['scheduled' => 'Agendado', 'confirmed' => 'Confirmado', 'reschedule_requested' => 'Alteração solicitada', 'cancelled' => 'Cancelado', 'no_show' => 'Não compareceu', 'completed' => 'Concluído'])->searchable(),
@@ -298,6 +316,11 @@ class AppointmentResource extends Resource
             'create' => CreateAppointment::route('/create'),
             'edit' => EditAppointment::route('/{record}/edit'),
         ];
+    }
+
+    private static function subjectChosen(Get $get): bool
+    {
+        return CurrentCompany::isAutomotive() ? filled($get('vehicle_id')) : filled($get('pet_id'));
     }
 
     private static function packageOptionLabel(?PetPackage $package): ?string

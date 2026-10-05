@@ -10,6 +10,7 @@ class WaitlistEntry extends TenantModel
         'company_id',
         'customer_id',
         'pet_id',
+        'vehicle_id',
         'service_id',
         'preferred_date',
         'preferred_time',
@@ -30,6 +31,11 @@ class WaitlistEntry extends TenantModel
     public function pet(): BelongsTo
     {
         return $this->belongsTo(Pet::class);
+    }
+
+    public function vehicle(): BelongsTo
+    {
+        return $this->belongsTo(Vehicle::class);
     }
 
     public function service(): BelongsTo

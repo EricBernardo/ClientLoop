@@ -2,7 +2,6 @@
 
 namespace App\Filament\Pages;
 
-use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Resources\Appointments\AppointmentResource;
 use App\Models\Appointment;
 use BackedEnum;
@@ -14,8 +13,6 @@ use UnitEnum;
 
 class Calendar extends Page
 {
-    use LimitsToPetShop;
-
     protected static ?string $navigationLabel = 'Agenda';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;
@@ -46,7 +43,7 @@ class Calendar extends Page
         $end = $this->mode === 'day' ? $start->copy()->endOfDay() : $start->copy()->addDays(6)->endOfDay();
 
         return Appointment::query()
-            ->with(['pet', 'customer', 'service'])
+            ->with(['pet', 'vehicle', 'customer', 'service'])
             ->whereBetween('scheduled_at', [$start, $end])
             ->whereNotIn('status', ['cancelled', 'no_show'])
             ->orderBy('scheduled_at')

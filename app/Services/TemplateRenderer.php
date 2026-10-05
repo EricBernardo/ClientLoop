@@ -6,11 +6,12 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Pet;
 use App\Models\Service;
+use App\Models\Vehicle;
 use InvalidArgumentException;
 
 class TemplateRenderer
 {
-    public const VARIABLES = ['responsavel', 'cliente', 'pet', 'empresa', 'servico', 'data', 'horario', 'link_agendamento', 'link_confirmacao'];
+    public const VARIABLES = ['responsavel', 'cliente', 'pet', 'veiculo', 'empresa', 'servico', 'data', 'horario', 'link_agendamento', 'link_confirmacao'];
 
     public function render(
         string $body,
@@ -20,6 +21,7 @@ class TemplateRenderer
         ?Pet $pet = null,
         ?Company $company = null,
         ?string $confirmationUrl = null,
+        ?Vehicle $vehicle = null,
     ): string {
         $this->validate($body);
         $company ??= $customer->company;
@@ -29,6 +31,7 @@ class TemplateRenderer
             'responsavel' => $customer->name,
             'cliente' => $customer->name,
             'pet' => $pet?->name ?? '',
+            'veiculo' => $vehicle?->label() ?? '',
             'empresa' => $company?->name ?? '',
             'servico' => $service?->name ?? '',
             'data' => $date->format('d/m/Y'),

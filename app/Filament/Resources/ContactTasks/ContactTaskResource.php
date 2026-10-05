@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\ContactTasks;
 
-use App\Filament\Concerns\LimitsToPetShop;
 use App\Filament\Resources\Appointments\AppointmentResource;
 use App\Filament\Resources\ContactTasks\Pages\ListContactTasks;
 use App\Models\ContactTask;
@@ -30,8 +29,6 @@ use UnitEnum;
 
 class ContactTaskResource extends Resource
 {
-    use LimitsToPetShop;
-
     protected static ?string $model = ContactTask::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;

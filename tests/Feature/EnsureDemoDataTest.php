@@ -147,13 +147,18 @@ class EnsureDemoDataTest extends TestCase
         $usage = collect($this->planUsageStats())->mapWithKeys(fn ($stat): array => [$stat->getLabel() => $stat->getValue()])->all();
 
         $this->assertSame([
+            'Agenda de hoje' => '1',
+            'Tarefas pendentes' => '1',
             'Prontas para entrega' => '2',
             'Em andamento' => '1',
             'Na fila' => '1',
             'A receber' => 'R$ 570,00',
             'Caixa do mês' => 'R$ 250,00',
         ], $overview);
-        $this->assertSame(['Clientes no mês' => '6 / 500'], $usage);
+        $this->assertSame([
+            'Clientes no mês' => '6 / 500',
+            'Tarefas no mês' => '1 / 1000',
+        ], $usage);
         $this->assertEqualsCanonicalizing(
             ['Veículo pronto parado', 'Entregue e ainda a receber'],
             $user->unreadNotifications()->get()->map(fn ($notification): string => $notification->data['title'])->all(),
