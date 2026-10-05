@@ -6,13 +6,18 @@ use App\Filament\Widgets\CompanyOverview;
 use App\Filament\Widgets\PlanUsageWidget;
 use App\Models\Appointment;
 use App\Models\Campaign;
+use App\Models\CashEntry;
 use App\Models\Company;
 use App\Models\ContactTask;
+use App\Models\Customer;
 use App\Models\Groomer;
 use App\Models\PetPackage;
+use App\Models\ServiceOrder;
+use App\Models\UsageRecord;
 use App\Models\User;
 use App\Models\WaitlistEntry;
 use App\Services\PackageService;
+use Carbon\Carbon;
 use Database\Seeders\DemoClinicSeeder;
 use Database\Seeders\DemoWorkshopSeeder;
 use Filament\Facades\Filament;
@@ -133,6 +138,32 @@ class EnsureDemoDataTest extends TestCase
         $this->assertGreaterThan(0, $lowPackages);
         $this->assertGreaterThan(0, $nextPackageSteps);
         $this->assertGreaterThan(0, $expiredPackages);
+    }
+
+    public function test_demo_seeders_look_like_more_than_eighteen_months_of_use(): void
+    {
+        $this->seed(DemoClinicSeeder::class);
+        $this->seed(DemoWorkshopSeeder::class);
+
+        $clinic = Company::query()->where('slug', 'petshop-patinhas-demo')->firstOrFail();
+        $workshop = Company::query()->where('slug', 'oficina-centro-demo')->firstOrFail();
+        $openedBefore = now()->subMonths(18);
+
+        $this->assertTrue($clinic->created_at->lte($openedBefore));
+        $this->assertTrue($workshop->created_at->lte($openedBefore));
+        $this->assertTrue(Carbon::parse(Customer::withoutGlobalScopes()->where('company_id', $clinic->id)->min('created_at'))->lte($openedBefore));
+        $this->assertTrue(Carbon::parse(Customer::withoutGlobalScopes()->where('company_id', $workshop->id)->min('created_at'))->lte($openedBefore));
+        $this->assertTrue(Carbon::parse(Appointment::withoutGlobalScopes()->where('company_id', $clinic->id)->min('scheduled_at'))->lte(now()->subMonths(17)));
+        $this->assertTrue(Carbon::parse(Appointment::withoutGlobalScopes()->where('company_id', $workshop->id)->min('scheduled_at'))->lte(now()->subMonths(17)));
+        $this->assertTrue(Carbon::parse(ServiceOrder::withoutGlobalScopes()->where('company_id', $workshop->id)->min('opened_on'))->lte(now()->subMonths(17)));
+        $this->assertGreaterThanOrEqual(18, UsageRecord::withoutGlobalScopes()->where('company_id', $clinic->id)->count());
+        $this->assertGreaterThanOrEqual(18, UsageRecord::withoutGlobalScopes()->where('company_id', $workshop->id)->count());
+        $this->assertTrue(
+            CashEntry::withoutGlobalScopes()
+                ->where('company_id', $workshop->id)
+                ->whereDate('occurred_on', '<', now()->startOfMonth()->toDateString())
+                ->exists()
+        );
     }
 
     public function test_demo_workshop_fills_the_automotive_dashboard(): void

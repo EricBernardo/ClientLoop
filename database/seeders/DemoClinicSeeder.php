@@ -140,15 +140,16 @@ class DemoClinicSeeder extends Seeder
         $responsibles = collect($customerDefs)->mapWithKeys(function (array $data) use ($company, $openedAt): array {
             $joinedAt = $openedAt->copy()->addMonths($data['joined']);
 
-            return [$data['name'] => Customer::withoutGlobalScopes()->updateOrCreate(
+            $customer = Customer::withoutGlobalScopes()->updateOrCreate(
                 ['company_id' => $company->id, 'phone' => $data['phone']],
                 [
                     'name' => $data['name'],
                     'last_activity_at' => now()->subDays($data['last_activity']),
-                    'created_at' => $joinedAt,
-                    'updated_at' => now(),
                 ],
-            )];
+            );
+            $customer->forceFill(['created_at' => $joinedAt])->save(['timestamps' => false]);
+
+            return [$data['name'] => $customer];
         });
 
         $petDefs = [
@@ -163,7 +164,7 @@ class DemoClinicSeeder extends Seeder
         $pets = collect($petDefs)->mapWithKeys(function (array $data) use ($company, $responsibles, $openedAt): array {
             $joinedAt = $openedAt->copy()->addMonths($data['joined']);
 
-            return [$data['name'] => Pet::withoutGlobalScopes()->updateOrCreate(
+            $pet = Pet::withoutGlobalScopes()->updateOrCreate(
                 ['company_id' => $company->id, 'customer_id' => $responsibles[$data['responsible']]->id, 'name' => $data['name']],
                 [
                     'species' => $data['species'],
@@ -173,10 +174,11 @@ class DemoClinicSeeder extends Seeder
                     'coat' => $data['coat'],
                     'allergies' => $data['allergies'],
                     'weight_kg' => $data['weight_kg'],
-                    'created_at' => $joinedAt,
-                    'updated_at' => now(),
                 ],
-            )];
+            );
+            $pet->forceFill(['created_at' => $joinedAt])->save(['timestamps' => false]);
+
+            return [$data['name'] => $pet];
         });
 
         $offerDefinitions = [
@@ -426,13 +428,19 @@ class DemoClinicSeeder extends Seeder
         $scheduledAt = Carbon::parse($attributes['scheduled_at']);
         $duration = (int) ($attributes['duration_minutes'] ?? 60);
 
-        return Appointment::withoutEvents(fn (): Appointment => Appointment::withoutGlobalScopes()->create([
-            ...$attributes,
-            'ends_at' => $scheduledAt->copy()->addMinutes($duration),
-            'confirmation_token' => Str::random(40),
-            'created_at' => $scheduledAt->copy()->subDays(2),
-            'updated_at' => $scheduledAt,
-        ]));
+        return Appointment::withoutEvents(function () use ($attributes, $scheduledAt, $duration): Appointment {
+            $appointment = Appointment::withoutGlobalScopes()->create([
+                ...$attributes,
+                'ends_at' => $scheduledAt->copy()->addMinutes($duration),
+                'confirmation_token' => Str::random(40),
+            ]);
+            $appointment->forceFill([
+                'created_at' => $scheduledAt->copy()->subDays(2),
+                'updated_at' => $scheduledAt,
+            ])->save(['timestamps' => false]);
+
+            return $appointment;
+        });
     }
 
     private function createPaidPackage(Company $company, Pet $pet, PackageOffer $offer, Carbon $purchasedAt, ?Carbon $validUntil): PetPackage
