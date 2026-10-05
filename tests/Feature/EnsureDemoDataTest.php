@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Widgets\CompanyOverview;
+use App\Filament\Widgets\PlanUsageWidget;
 use App\Models\Appointment;
 use App\Models\Campaign;
 use App\Models\Company;
@@ -12,6 +14,9 @@ use App\Models\User;
 use App\Models\WaitlistEntry;
 use App\Services\PackageService;
 use Database\Seeders\DemoClinicSeeder;
+use Database\Seeders\DemoWorkshopSeeder;
+use Filament\Facades\Filament;
+use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
@@ -27,6 +32,8 @@ class EnsureDemoDataTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'demo@clientloop.test']);
         $this->assertDatabaseHas('users', ['email' => 'atendente@clientloop.test', 'role' => 'attendant']);
         $this->assertDatabaseHas('companies', ['slug' => 'petshop-patinhas-demo', 'public_booking_token' => 'patinhas-demo-booking']);
+        $this->assertDatabaseHas('users', ['email' => 'oficina@clientloop.test']);
+        $this->assertDatabaseHas('companies', ['slug' => 'oficina-centro-demo', 'vertical' => 'automotive']);
     }
 
     public function test_it_preserves_a_database_that_already_has_a_user(): void
@@ -126,5 +133,54 @@ class EnsureDemoDataTest extends TestCase
         $this->assertGreaterThan(0, $lowPackages);
         $this->assertGreaterThan(0, $nextPackageSteps);
         $this->assertGreaterThan(0, $expiredPackages);
+    }
+
+    public function test_demo_workshop_fills_the_automotive_dashboard(): void
+    {
+        $this->seed(DemoWorkshopSeeder::class);
+
+        $user = User::query()->where('email', 'oficina@clientloop.test')->firstOrFail();
+        $this->actingAs($user);
+        Filament::setCurrentPanel(Filament::getPanel('company'));
+
+        $overview = collect($this->overviewStats())->mapWithKeys(fn ($stat): array => [$stat->getLabel() => $stat->getValue()])->all();
+        $usage = collect($this->planUsageStats())->mapWithKeys(fn ($stat): array => [$stat->getLabel() => $stat->getValue()])->all();
+
+        $this->assertSame([
+            'Prontas para entrega' => '2',
+            'Em andamento' => '1',
+            'Na fila' => '1',
+            'A receber' => 'R$ 570,00',
+            'Caixa do mês' => 'R$ 250,00',
+        ], $overview);
+        $this->assertSame(['Clientes no mês' => '6 / 500'], $usage);
+        $this->assertEqualsCanonicalizing(
+            ['Veículo pronto parado', 'Entregue e ainda a receber'],
+            $user->unreadNotifications()->get()->map(fn ($notification): string => $notification->data['title'])->all(),
+        );
+    }
+
+    /** @return array<int, Stat> */
+    private function overviewStats(): array
+    {
+        return (new class extends CompanyOverview
+        {
+            public function exposed(): array
+            {
+                return $this->getStats();
+            }
+        })->exposed();
+    }
+
+    /** @return array<int, Stat> */
+    private function planUsageStats(): array
+    {
+        return (new class extends PlanUsageWidget
+        {
+            public function exposed(): array
+            {
+                return $this->getStats();
+            }
+        })->exposed();
     }
 }

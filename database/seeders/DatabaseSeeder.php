@@ -17,6 +17,9 @@ class DatabaseSeeder extends Seeder
     {
         Plan::firstOrCreate(['name' => 'Teste gratuito'], ['contact_limit' => 500, 'task_limit' => 1000, 'is_default' => true]);
 
-        $this->call(DemoClinicSeeder::class);
+        $this->call([
+            DemoClinicSeeder::class,
+            DemoWorkshopSeeder::class,
+        ]);
     }
 }
