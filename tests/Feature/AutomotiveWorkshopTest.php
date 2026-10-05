@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CashEntryDirection;
+use App\Enums\CashExpenseCategory;
 use App\Enums\CompanyVertical;
 use App\Enums\ReceiptPaymentMethod;
 use App\Enums\ReceiptStatus;
@@ -11,6 +13,8 @@ use App\Filament\Pages\CashFlow;
 use App\Filament\Resources\ServiceOrders\Pages\CreateServiceOrder;
 use App\Filament\Resources\ServiceOrders\Pages\EditServiceOrder;
 use App\Filament\Resources\ServiceOrders\ServiceOrderResource;
+use App\Filament\Widgets\CompanyOverview;
+use App\Filament\Widgets\PlanUsageWidget;
 use App\Models\CashEntry;
 use App\Models\Company;
 use App\Models\CompanySubscription;
@@ -22,6 +26,7 @@ use App\Models\Vehicle;
 use App\Services\ServiceReceiptService;
 use Carbon\Carbon;
 use Filament\Facades\Filament;
+use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -250,6 +255,77 @@ class AutomotiveWorkshopTest extends TestCase
         $this->assertSame(8, $company->business_starts_at_hour);
         $this->assertSame(24, $company->confirmation_hours);
         $this->assertSame(6, $company->reactivation_months);
+    }
+
+    public function test_automotive_dashboard_splits_the_workshop_and_the_cash(): void
+    {
+        [, $user] = $this->company(CompanyVertical::Automotive);
+        $this->actingAs($user);
+        Filament::setCurrentPanel(Filament::getPanel('company'));
+        $company = $user->company;
+
+        $this->order($company)->update(['status' => ServiceOrderStatus::Open]);
+        $this->order($company, 'DEF2E34')->update(['status' => ServiceOrderStatus::InProgress]);
+        $readyPending = $this->order($company, 'GHI3F45');
+        $readyPending->update(['status' => ServiceOrderStatus::Ready]);
+        $readyPaid = $this->order($company, 'JKL4G56');
+        $readyPaid->update(['status' => ServiceOrderStatus::Ready]);
+        $this->order($company, 'MNO5H67')->update(['status' => ServiceOrderStatus::Delivered]);
+
+        app(ServiceReceiptService::class)->issue($readyPending, '40.00', ReceiptPaymentMethod::OnAccount, ReceiptStatus::Pending, now());
+        app(ServiceReceiptService::class)->issue($readyPaid, '130.00', ReceiptPaymentMethod::Pix, ReceiptStatus::Paid, now());
+        CashEntry::create([
+            'direction' => CashEntryDirection::Expense,
+            'category' => CashExpenseCategory::Rent,
+            'amount' => 50,
+            'occurred_on' => now()->toDateString(),
+        ]);
+
+        $values = collect($this->overviewStats())->mapWithKeys(fn ($stat): array => [$stat->getLabel() => $stat->getValue()])->all();
+
+        $this->assertSame([
+            'Prontas para entrega' => '2',
+            'Em andamento' => '1',
+            'Na fila' => '1',
+            'A receber' => 'R$ 40,00',
+            'Caixa do mês' => 'R$ 80,00',
+        ], $values);
+        $this->assertSame('1 recibo pendente', $this->overviewStats()[3]->getDescription());
+        $this->assertSame('Entradas R$ 130,00 · Saídas R$ 50,00', $this->overviewStats()[4]->getDescription());
+    }
+
+    public function test_automotive_plan_usage_counts_customers_only(): void
+    {
+        [, $user] = $this->company(CompanyVertical::Automotive);
+        $this->actingAs($user);
+
+        $labels = collect($this->planUsageStats())->map(fn ($stat) => $stat->getLabel())->all();
+
+        $this->assertSame(['Clientes no mês'], $labels);
+    }
+
+    /** @return array<int, Stat> */
+    private function overviewStats(): array
+    {
+        return (new class extends CompanyOverview
+        {
+            public function exposed(): array
+            {
+                return $this->getStats();
+            }
+        })->exposed();
+    }
+
+    /** @return array<int, Stat> */
+    private function planUsageStats(): array
+    {
+        return (new class extends PlanUsageWidget
+        {
+            public function exposed(): array
+            {
+                return $this->getStats();
+            }
+        })->exposed();
     }
 
     /** @return array{Company, User} */

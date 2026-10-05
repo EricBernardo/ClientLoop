@@ -64,41 +64,60 @@ class CompanyOverview extends StatsOverviewWidget
     /** @return array<int, Stat> */
     private function automotiveStats(): array
     {
-        $openOrders = ServiceOrder::query()->whereIn('status', [
-            ServiceOrderStatus::Open,
-            ServiceOrderStatus::InProgress,
-            ServiceOrderStatus::Ready,
-        ])->count();
-        $pendingReceipts = ServiceReceipt::query()->where('status', ReceiptStatus::Pending)->count();
+        $ready = ServiceOrder::query()->where('status', ServiceOrderStatus::Ready)->count();
+        $inProgress = ServiceOrder::query()->where('status', ServiceOrderStatus::InProgress)->count();
+        $queued = ServiceOrder::query()->where('status', ServiceOrderStatus::Open)->count();
+        $pendingReceipts = ServiceReceipt::query()->where('status', ReceiptStatus::Pending);
+        $pendingCount = (clone $pendingReceipts)->count();
+        $pendingAmount = (float) (clone $pendingReceipts)->sum('amount');
+
         $from = now()->startOfMonth()->toDateString();
         $until = now()->endOfMonth()->toDateString();
-        $entries = CashEntry::query()->whereDate('occurred_on', '>=', $from)->whereDate('occurred_on', '<=', $until)->get();
-        $income = 0.0;
-        $expense = 0.0;
-
-        foreach ($entries as $entry) {
-            if ($entry->direction === CashEntryDirection::Income) {
-                $income += (float) $entry->amount;
-            } else {
-                $expense += (float) $entry->amount;
-            }
-        }
-
-        $balance = number_format($income - $expense, 2, ',', '.');
+        $income = (float) CashEntry::query()
+            ->where('direction', CashEntryDirection::Income)
+            ->whereDate('occurred_on', '>=', $from)
+            ->whereDate('occurred_on', '<=', $until)
+            ->sum('amount');
+        $expense = (float) CashEntry::query()
+            ->where('direction', CashEntryDirection::Expense)
+            ->whereDate('occurred_on', '>=', $from)
+            ->whereDate('occurred_on', '<=', $until)
+            ->sum('amount');
+        $balance = $income - $expense;
 
         return [
-            Stat::make('Ordens abertas', (string) $openOrders)
-                ->description('Abertas, em andamento ou prontas')
+            Stat::make('Prontas para entrega', (string) $ready)
+                ->description('Veículos prontos para o cliente retirar')
+                ->url($this->ordersUrl(ServiceOrderStatus::Ready))
+                ->color($ready > 0 ? 'success' : 'gray'),
+            Stat::make('Em andamento', (string) $inProgress)
+                ->description('Serviços acontecendo agora')
+                ->url($this->ordersUrl(ServiceOrderStatus::InProgress))
+                ->color($inProgress > 0 ? 'warning' : 'gray'),
+            Stat::make('Na fila', (string) $queued)
+                ->description('Ordens ainda não iniciadas')
+                ->url($this->ordersUrl(ServiceOrderStatus::Open))
+                ->color($queued > 0 ? 'info' : 'gray'),
+            Stat::make('A receber', $this->money($pendingAmount))
+                ->description($pendingCount === 1 ? '1 recibo pendente' : "{$pendingCount} recibos pendentes")
                 ->url(ServiceOrderResource::getUrl('index'))
-                ->color($openOrders ? 'primary' : 'success'),
-            Stat::make('Recibos pendentes', (string) $pendingReceipts)
-                ->description('Ainda não recebidos')
-                ->url(ServiceOrderResource::getUrl('index'))
-                ->color($pendingReceipts ? 'warning' : 'success'),
-            Stat::make('Saldo do mês', 'R$ '.$balance)
-                ->description('Entradas menos saídas')
+                ->color($pendingAmount > 0 ? 'warning' : 'success'),
+            Stat::make('Caixa do mês', $this->money($balance))
+                ->description('Entradas '.$this->money($income).' · Saídas '.$this->money($expense))
                 ->url(CashFlow::getUrl())
-                ->color('success'),
+                ->color($balance < 0 ? 'danger' : 'success'),
         ];
+    }
+
+    private function ordersUrl(ServiceOrderStatus $status): string
+    {
+        return ServiceOrderResource::getUrl('index', [
+            'tableFilters' => ['status' => ['value' => $status->value]],
+        ]);
+    }
+
+    private function money(float $amount): string
+    {
+        return 'R$ '.number_format($amount, 2, ',', '.');
     }
 }
