@@ -31,9 +31,15 @@ class AutomotiveVerticalTest extends TestCase
     {
         $this->get(route('home'))
             ->assertOk()
+            ->assertSee(route('landing.pet'), false)
+            ->assertSee(route('landing.automotive'), false)
             ->assertSee('Serviços automotivos')
+            ->assertSee('Pet shop');
+
+        $this->get(route('landing.automotive'))
+            ->assertOk()
             ->assertSee('Ordem de serviço')
-            ->assertSee('pet shops de banho e tosa', false);
+            ->assertSee('Oficina com ordem de serviço, recibo e caixa.');
 
         $this->get(route('register'))
             ->assertOk()

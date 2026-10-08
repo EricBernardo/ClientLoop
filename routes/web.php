@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppointmentConfirmationController;
 use App\Http\Controllers\ImportTemplateController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\PublicBookingController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\ServiceReceiptController;
@@ -10,9 +11,10 @@ use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+Route::get('/', [LandingController::class, 'home'])->name('home');
+Route::get('/home', [LandingController::class, 'home']);
+Route::get('/pet', [LandingController::class, 'pet'])->name('landing.pet');
+Route::get('/automotiva', [LandingController::class, 'automotive'])->name('landing.automotive');
 
 Route::get('/book/{token}', [PublicBookingController::class, 'show'])->name('booking.show');
 Route::post('/book/{token}', [PublicBookingController::class, 'store'])->name('booking.store');

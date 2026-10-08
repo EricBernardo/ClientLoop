@@ -232,7 +232,7 @@ class OperationalRulesTest extends TestCase
 
     public function test_public_site_explains_product_and_exposes_registration(): void
     {
-        $this->get('/')
+        $this->get('/pet')
             ->assertOk()
             ->assertSee('Sua agenda, seus pets e seus pacotes no mesmo lugar.')
             ->assertSee('Link para o tutor')

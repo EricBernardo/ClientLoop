@@ -9,21 +9,31 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\DefaultMessageTemplateService;
 use Filament\Pages\Dashboard;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class RegistrationController extends Controller
 {
-    public function create()
+    public function create(Request $request): View
     {
-        return view('auth.register');
+        return view('auth.register', [
+            'vertical' => CompanyVertical::fromCookie($request->cookie(CompanyVertical::RememberedNicheCookie)),
+        ]);
     }
 
-    public function store(Request $request, DefaultMessageTemplateService $messageTemplates)
+    public function store(Request $request, DefaultMessageTemplateService $messageTemplates): RedirectResponse
     {
+        $rememberedVertical = CompanyVertical::fromCookie($request->cookie(CompanyVertical::RememberedNicheCookie));
+
+        if ($rememberedVertical instanceof CompanyVertical) {
+            $request->merge(['vertical' => $rememberedVertical->value]);
+        }
+
         $data = $request->validate([
             'company_name' => ['required', 'string', 'max:120'],
             'vertical' => ['required', Rule::enum(CompanyVertical::class)],
