@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CompanyVertical;
+use App\Filament\Pages\Videos;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -23,7 +24,9 @@ class LandingController extends Controller
 
     public function pet(): Response
     {
-        return $this->niche(CompanyVertical::PetShop, 'marketing.pet');
+        return $this->niche(CompanyVertical::PetShop, 'marketing.pet', [
+            'videos' => Videos::forLanding(),
+        ]);
     }
 
     public function automotive(): Response
@@ -31,10 +34,13 @@ class LandingController extends Controller
         return $this->niche(CompanyVertical::Automotive, 'marketing.automotive');
     }
 
-    private function niche(CompanyVertical $vertical, string $view): Response
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function niche(CompanyVertical $vertical, string $view, array $data = []): Response
     {
         return response()
-            ->view($view)
+            ->view($view, $data)
             ->cookie(
                 CompanyVertical::RememberedNicheCookie,
                 $vertical->value,

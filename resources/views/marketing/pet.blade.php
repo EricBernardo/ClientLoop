@@ -10,7 +10,8 @@
             <nav>
                 <a class="text-link" href="#recursos">Recursos</a>
                 <a class="text-link" href="#how-it-works">Como funciona</a>
-                <a class="text-link niche-switch" href="{{ route('landing.automotive') }}">Oficina</a>
+                <a class="text-link" href="#videos">Vídeos</a>
+                {{-- <a class="text-link niche-switch" href="{{ route('landing.automotive') }}">Oficina</a> --}}
                 <a class="text-link" href="{{ url('/admin/login') }}">Entrar</a>
                 <a class="button primary" href="{{ route('register') }}">Criar minha conta</a>
             </nav>
@@ -130,6 +131,25 @@
             </div>
         </div>
     </section>
+
+    @if (count($videos) > 0)
+        <section class="section white" id="videos">
+            <div class="wrap">
+                <div class="eyebrow">Na prática</div>
+                <h2>Veja a rotina em três vídeos.</h2>
+                <p class="lead">O dia no painel, o horário marcado e a confirmação pelo WhatsApp.</p>
+                <div class="video-grid">
+                    @foreach ($videos as $video)
+                        <article class="video-card">
+                            <video controls preload="metadata" playsinline src="{{ $video['videoUrl'] }}"></video>
+                            <h3>{{ $video['title'] }}</h3>
+                            <p>{{ $video['summary'] }}</p>
+                        </article>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
 
     <div class="wrap section">
         <section class="cta">

@@ -10,7 +10,7 @@
             <nav>
                 <a class="text-link" href="#recursos">Recursos</a>
                 <a class="text-link" href="#how-it-works">Como funciona</a>
-                <a class="text-link niche-switch" href="{{ route('landing.pet') }}">Pet shop</a>
+                {{-- <a class="text-link niche-switch" href="{{ route('landing.pet') }}">Pet shop</a> --}}
                 <a class="text-link" href="{{ url('/admin/login') }}">Entrar</a>
                 <a class="button primary" href="{{ route('register') }}">Criar minha conta</a>
             </nav>
