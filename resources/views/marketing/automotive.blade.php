@@ -12,7 +12,7 @@
                 <a class="text-link" href="#how-it-works">Como funciona</a>
                 {{-- <a class="text-link niche-switch" href="{{ route('landing.pet') }}">Pet shop</a> --}}
                 <a class="text-link" href="{{ url('/admin/login') }}">Entrar</a>
-                <a class="button primary" href="{{ route('register') }}">Criar minha conta</a>
+                <a class="button primary" href="{{ route('register', ['niche' => 'automotiva']) }}">Criar minha conta</a>
             </nav>
         </header>
         <main>
@@ -22,7 +22,7 @@
                     <h1>Oficina com ordem de serviço, recibo e caixa.</h1>
                     <p>Cadastre o cliente e o veículo, abra a ordem de serviço, lance o recibo interno e acompanhe o que entrou e saiu no período.</p>
                     <div class="actions">
-                        <a class="button primary" href="{{ route('register') }}">Começar gratuitamente</a>
+                        <a class="button primary" href="{{ route('register', ['niche' => 'automotiva']) }}">Começar gratuitamente</a>
                         <a class="button secondary" href="#recursos">Ver o que inclui</a>
                     </div>
                     <p class="fine">14 dias de teste. Sem cartão nesta etapa.</p>
@@ -106,7 +106,7 @@
                 <h2>Deixe a rotina da oficina no mesmo lugar.</h2>
                 <p>Crie a conta e abra o painel. A ordem de serviço, o recibo e o fluxo de caixa ficam juntos.</p>
             </div>
-            <a class="button primary" href="{{ route('register') }}">Criar conta</a>
+            <a class="button primary" href="{{ route('register', ['niche' => 'automotiva']) }}">Criar conta</a>
         </section>
         <footer>
             <span>© {{ now()->year }} ClientLoop</span>

@@ -8,6 +8,7 @@ use App\Models\CompanySubscription;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\DefaultMessageTemplateService;
+use App\Services\SignupNotifier;
 use Filament\Pages\Dashboard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,19 +20,23 @@ use Illuminate\View\View;
 
 class RegistrationController extends Controller
 {
-    public function create(Request $request): View
+    public function create(Request $request, ?string $niche = null): View
     {
+        $urlVertical = CompanyVertical::fromSlug($niche);
+
         return view('auth.register', [
-            'vertical' => CompanyVertical::fromCookie($request->cookie(CompanyVertical::RememberedNicheCookie)),
+            'niche' => $urlVertical?->slug(),
+            'vertical' => $urlVertical ?? CompanyVertical::fromCookie($request->cookie(CompanyVertical::RememberedNicheCookie)),
         ]);
     }
 
-    public function store(Request $request, DefaultMessageTemplateService $messageTemplates): RedirectResponse
+    public function store(Request $request, DefaultMessageTemplateService $messageTemplates, SignupNotifier $signupNotifier, ?string $niche = null): RedirectResponse
     {
-        $rememberedVertical = CompanyVertical::fromCookie($request->cookie(CompanyVertical::RememberedNicheCookie));
+        $lockedVertical = CompanyVertical::fromSlug($niche)
+            ?? CompanyVertical::fromCookie($request->cookie(CompanyVertical::RememberedNicheCookie));
 
-        if ($rememberedVertical instanceof CompanyVertical) {
-            $request->merge(['vertical' => $rememberedVertical->value]);
+        if ($lockedVertical instanceof CompanyVertical) {
+            $request->merge(['vertical' => $lockedVertical->value]);
         }
 
         $data = $request->validate([
@@ -69,6 +74,8 @@ class RegistrationController extends Controller
                 'email_verified_at' => $requireVerification ? null : now(),
             ]);
         });
+        $signupNotifier->notify($user);
+
         Auth::login($user);
 
         if ($requireVerification) {

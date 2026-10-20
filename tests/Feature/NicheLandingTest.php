@@ -37,6 +37,7 @@ class NicheLandingTest extends TestCase
     {
         $this->get(route('landing.pet'))
             ->assertSee('Sua agenda, seus pets e seus pacotes no mesmo lugar.')
+            ->assertSee(route('register', ['niche' => 'pet']), false)
             ->assertCookie(CompanyVertical::RememberedNicheCookie, CompanyVertical::PetShop->value);
 
         $this->withCookie(CompanyVertical::RememberedNicheCookie, CompanyVertical::PetShop->value)
@@ -84,6 +85,7 @@ class NicheLandingTest extends TestCase
         $this->withCookie(CompanyVertical::RememberedNicheCookie, CompanyVertical::PetShop->value)
             ->get(route('landing.automotive'))
             ->assertSee('Oficina com ordem de serviço, recibo e caixa.')
+            ->assertSee(route('register', ['niche' => 'automotiva']), false)
             ->assertCookie(CompanyVertical::RememberedNicheCookie, CompanyVertical::Automotive->value);
 
         $this->withCookie(CompanyVertical::RememberedNicheCookie, CompanyVertical::Automotive->value)
@@ -114,5 +116,65 @@ class NicheLandingTest extends TestCase
         $user = User::where('email', 'ana-pet@clientloop.test')->firstOrFail();
 
         $this->assertSame(CompanyVertical::PetShop, $user->company->vertical);
+    }
+
+    public function test_register_url_selects_the_business_type_and_hides_the_field(): void
+    {
+        Config::set('clientloop.require_email_verification', false);
+
+        $this->get(route('register', ['niche' => 'pet']))
+            ->assertOk()
+            ->assertDontSee('Tipo de negócio', false)
+            ->assertDontSee('<select id="vertical"', false)
+            ->assertSee('name="vertical" value="pet_shop"', false);
+
+        $this->get('/register/pet_shop')
+            ->assertOk()
+            ->assertDontSee('Tipo de negócio', false)
+            ->assertSee('name="vertical" value="pet_shop"', false);
+
+        $this->withCookie(CompanyVertical::RememberedNicheCookie, CompanyVertical::Automotive->value)
+            ->post(route('register.store', ['niche' => 'pet']), [
+                'company_name' => 'Pet da Ana',
+                'vertical' => CompanyVertical::Automotive->value,
+                'name' => 'Ana',
+                'email' => 'ana-url@clientloop.test',
+                'password' => 'password-password',
+                'password_confirmation' => 'password-password',
+            ])
+            ->assertRedirect();
+
+        $user = User::where('email', 'ana-url@clientloop.test')->firstOrFail();
+
+        $this->assertSame(CompanyVertical::PetShop, $user->company->vertical);
+    }
+
+    public function test_automotive_register_url_hides_the_business_type_and_locks_it(): void
+    {
+        Config::set('clientloop.require_email_verification', false);
+
+        $this->get(route('register', ['niche' => 'automotiva']))
+            ->assertOk()
+            ->assertDontSee('Tipo de negócio', false)
+            ->assertDontSee('<select id="vertical"', false)
+            ->assertSee('name="vertical" value="automotive"', false);
+
+        $this->post(route('register.store', ['niche' => 'automotiva']), [
+            'company_name' => 'Oficina da Ana',
+            'vertical' => CompanyVertical::PetShop->value,
+            'name' => 'Ana',
+            'email' => 'ana-oficina@clientloop.test',
+            'password' => 'password-password',
+            'password_confirmation' => 'password-password',
+        ])->assertRedirect();
+
+        $user = User::where('email', 'ana-oficina@clientloop.test')->firstOrFail();
+
+        $this->assertSame(CompanyVertical::Automotive, $user->company->vertical);
+    }
+
+    public function test_unknown_register_niche_returns_not_found(): void
+    {
+        $this->get('/register/clinica')->assertNotFound();
     }
 }

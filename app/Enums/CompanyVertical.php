@@ -43,6 +43,27 @@ enum CompanyVertical: string
         };
     }
 
+    public function slug(): string
+    {
+        return match ($this) {
+            self::PetShop => 'pet',
+            self::Automotive => 'automotiva',
+        };
+    }
+
+    public static function fromSlug(mixed $value): ?self
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        return match ($value) {
+            'pet', self::PetShop->value => self::PetShop,
+            'automotiva', self::Automotive->value => self::Automotive,
+            default => null,
+        };
+    }
+
     public static function fromCookie(mixed $value): ?self
     {
         if (! is_string($value)) {

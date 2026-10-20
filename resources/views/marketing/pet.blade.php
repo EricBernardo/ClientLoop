@@ -13,7 +13,7 @@
                 <a class="text-link" href="#videos">Vídeos</a>
                 {{-- <a class="text-link niche-switch" href="{{ route('landing.automotive') }}">Oficina</a> --}}
                 <a class="text-link" href="{{ url('/admin/login') }}">Entrar</a>
-                <a class="button primary" href="{{ route('register') }}">Criar minha conta</a>
+                <a class="button primary" href="{{ route('register', ['niche' => 'pet']) }}">Criar minha conta</a>
             </nav>
         </header>
         <main>
@@ -23,7 +23,7 @@
                     <h1>Sua agenda, seus pets e seus pacotes no mesmo lugar.</h1>
                     <p>Marque banhos sem conflito, confirme pelo WhatsApp ou por link, dê ao tutor um link de agendamento, acompanhe pacotes e retornos — e não deixe ninguém sumir da fila. O sino avisa a equipe quando alguém confirma, cancela ou quando a cota do mês acaba.</p>
                     <div class="actions">
-                        <a class="button primary" href="{{ route('register') }}">Começar gratuitamente</a>
+                        <a class="button primary" href="{{ route('register', ['niche' => 'pet']) }}">Começar gratuitamente</a>
                         <a class="button secondary" href="#recursos">Ver o que inclui</a>
                     </div>
                     <p class="fine">14 dias de teste. Sem cartão nesta etapa.</p>
@@ -158,7 +158,7 @@
                 <h2>Deixe a rotina do pet shop mais leve a partir do próximo banho.</h2>
                 <p>Crie a conta e abra o painel. A agenda, a fila, o link do tutor e os relatórios ficam no mesmo lugar.</p>
             </div>
-            <a class="button primary" href="{{ route('register') }}">Criar conta</a>
+            <a class="button primary" href="{{ route('register', ['niche' => 'pet']) }}">Criar conta</a>
         </section>
         <footer>
             <span>© {{ now()->year }} ClientLoop</span>

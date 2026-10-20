@@ -22,8 +22,12 @@ Route::get('/confirm/{token}', [AppointmentConfirmationController::class, 'show'
 Route::post('/confirm/{token}', [AppointmentConfirmationController::class, 'confirm'])->name('appointment.confirm.submit');
 Route::post('/confirm/{token}/cancel', [AppointmentConfirmationController::class, 'cancel'])->name('appointment.confirm.cancel');
 
-Route::get('/register', [RegistrationController::class, 'create'])->name('register');
-Route::post('/register', [RegistrationController::class, 'store'])->name('register.store');
+Route::get('/register/{niche?}', [RegistrationController::class, 'create'])
+    ->name('register')
+    ->whereIn('niche', ['pet', 'pet_shop', 'automotiva', 'automotive']);
+Route::post('/register/{niche?}', [RegistrationController::class, 'store'])
+    ->name('register.store')
+    ->whereIn('niche', ['pet', 'pet_shop', 'automotiva', 'automotive']);
 Route::redirect('/app', '/admin');
 Route::redirect('/super', '/platform');
 Route::get('/admin/imports/template/{type}', ImportTemplateController::class)->middleware(['auth', 'verified.when_required'])->name('imports.template');
