@@ -58,20 +58,7 @@ class ActivityLogResource extends Resource
                 TextColumn::make('event')->label('Ação')->badge()->color(fn (?string $state): string => InterfaceLabels::activityEventColor($state))->formatStateUsing(fn (?string $state): string => InterfaceLabels::activityEvent($state))->searchable(),
                 TextColumn::make('user.name')->label('Quem')->placeholder('Sistema'),
                 TextColumn::make('subject_type')->label('Sobre')->formatStateUsing(fn (?string $state, ActivityLog $record): string => self::subjectLabel($record)),
-                TextColumn::make('properties')->label('Detalhes')->formatStateUsing(function (mixed $state): string {
-                    if (is_string($state)) {
-                        $decoded = json_decode($state, true);
-                        $state = is_array($decoded) ? $decoded : [];
-                    }
-
-                    if (! is_array($state) || $state === []) {
-                        return '—';
-                    }
-
-                    return collect($state)
-                        ->map(fn (mixed $value, string|int $key): string => $key.': '.(is_scalar($value) || $value === null ? (string) $value : json_encode($value)))
-                        ->implode(' · ');
-                })->wrap()->limit(80),
+                TextColumn::make('properties')->label('Detalhes')->state(fn (ActivityLog $record): string => self::formatProperties($record->properties))->wrap()->limit(80),
             ])
             ->filters([
                 SelectFilter::make('event')->label('Ação')->options(InterfaceLabels::activityEvents())->searchable(),
@@ -85,6 +72,22 @@ class ActivityLogResource extends Resource
         return [
             'index' => ListActivityLogs::route('/'),
         ];
+    }
+
+    private static function formatProperties(mixed $state): string
+    {
+        if (is_string($state)) {
+            $decoded = json_decode($state, true);
+            $state = is_array($decoded) ? $decoded : [];
+        }
+
+        if (! is_array($state) || $state === []) {
+            return '—';
+        }
+
+        return collect($state)
+            ->map(fn (mixed $value, string|int $key): string => $key.': '.(is_scalar($value) || $value === null ? (string) $value : json_encode($value)))
+            ->implode(' · ');
     }
 
     private static function subjectLabel(ActivityLog $record): string
