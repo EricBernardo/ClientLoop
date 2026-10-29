@@ -25,6 +25,8 @@ class SignupNotifier
             'super_admins' => $resolved['super_admins'],
             'recipients' => $recipients,
             'mail_mailer' => config('mail.default'),
+            'brevo_key_configured' => filled(config('mail.mailers.brevo.key')),
+            'brevo_key_length' => strlen((string) config('mail.mailers.brevo.key')),
         ]);
 
         if ($recipients === []) {
@@ -54,6 +56,8 @@ class SignupNotifier
                 'owner_email' => $owner->email,
                 'recipients' => $recipients,
                 'mail_mailer' => config('mail.default'),
+                'brevo_key_configured' => filled(config('mail.mailers.brevo.key')),
+                'brevo_key_length' => strlen((string) config('mail.mailers.brevo.key')),
                 'exception' => $exception->getMessage(),
             ]);
 
