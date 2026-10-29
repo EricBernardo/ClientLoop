@@ -93,6 +93,31 @@ class Company extends Model
         return $this->hasMany(Groomer::class);
     }
 
+    public function contactTasks(): HasMany
+    {
+        return $this->hasMany(ContactTask::class);
+    }
+
+    public function campaigns(): HasMany
+    {
+        return $this->hasMany(Campaign::class);
+    }
+
+    public function activityLogs(): HasMany
+    {
+        return $this->hasMany(ActivityLog::class);
+    }
+
+    public function usageRecords(): HasMany
+    {
+        return $this->hasMany(UsageRecord::class);
+    }
+
+    public function importRuns(): HasMany
+    {
+        return $this->hasMany(ImportRun::class);
+    }
+
     public function publicBookingUrl(?int $customerId = null): string
     {
         if (blank($this->public_booking_token)) {
