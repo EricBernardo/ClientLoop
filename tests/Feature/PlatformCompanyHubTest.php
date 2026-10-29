@@ -46,7 +46,13 @@ class PlatformCompanyHubTest extends TestCase
         Filament::setCurrentPanel('super');
 
         Livewire::test(ViewCompany::class, ['record' => $company->getRouteKey()])
-            ->callAction('delete')
+            ->mountAction([
+                'name' => 'delete',
+                'context' => ['recordKey' => $company->getKey()],
+            ])
+            ->assertMountedActionModalSee('Excluir «'.$company->name.'» permanentemente')
+            ->assertMountedActionModalSee('dados de «'.$company->name.'»')
+            ->callMountedAction()
             ->assertHasNoActionErrors()
             ->assertRedirect(route('filament.super.resources.companies.index'));
 

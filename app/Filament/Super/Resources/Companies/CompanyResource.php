@@ -43,6 +43,8 @@ class CompanyResource extends Resource
 
     protected static ?string $navigationLabel = 'Empresas';
 
+    protected static ?string $recordTitleAttribute = 'name';
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
@@ -154,11 +156,16 @@ class CompanyResource extends Resource
             Action::make('suspender')->label('Suspender')->color('danger')->visible(fn (Company $record) => $record->status === 'active')->requiresConfirmation()->action(fn (Company $record) => $record->update(['status' => 'suspended'])),
             Action::make('ativar')->label('Ativar')->color('success')->visible(fn (Company $record) => in_array($record->status, ['trial', 'suspended'], true))->action(fn (Company $record) => $record->update(['status' => 'active'])),
             EditAction::make()->color('info')->url(fn (Company $record) => self::getUrl('edit', ['record' => $record])),
-            DeleteAction::make()
-                ->requiresConfirmation()
-                ->modalHeading('Excluir empresa permanentemente')
-                ->modalDescription('Isto apaga clientes, agendamentos, campanhas, tarefas e demais dados da empresa. Os usuários da conta ficam sem empresa vinculada e não podem ser recuperados pelo sistema.'),
+            self::deleteCompanyAction(),
         ])->recordUrl(fn (Company $record): string => self::getUrl('view', ['record' => $record]));
+    }
+
+    public static function deleteCompanyAction(): DeleteAction
+    {
+        return DeleteAction::make()
+            ->requiresConfirmation()
+            ->modalHeading(fn (DeleteAction $action): string => 'Excluir «'.$action->getRecordTitle().'» permanentemente')
+            ->modalDescription(fn (DeleteAction $action): string => 'Isto apaga clientes, agendamentos, campanhas, tarefas e demais dados de «'.$action->getRecordTitle().'». Os usuários da conta ficam sem empresa vinculada e não podem ser recuperados pelo sistema.');
     }
 
     public static function getRelations(): array
