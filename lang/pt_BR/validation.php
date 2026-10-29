@@ -8,6 +8,7 @@ return [
     'before' => 'O campo :attribute deve ser uma data anterior a :date.',
     'before_or_equal' => 'O campo :attribute deve ser uma data igual ou anterior a :date.',
     'boolean' => 'O campo :attribute deve ser verdadeiro ou falso.',
+    'confirmed' => 'A confirmação de :attribute não confere.',
     'date' => 'Informe uma data válida para :attribute.',
     'date_format' => 'O campo :attribute não está no formato esperado: :format.',
     'different' => 'Os campos :attribute e :other devem ser diferentes.',
@@ -52,6 +53,7 @@ return [
     'url' => 'Informe um link válido para :attribute.',
 
     'attributes' => [
+        'company_name' => 'nome da empresa',
         'customer_id' => 'responsável',
         'pet_id' => 'pet',
         'service_id' => 'serviço',
@@ -65,5 +67,8 @@ return [
         'phone' => 'telefone',
         'email' => 'e-mail',
         'name' => 'nome',
+        'password' => 'senha',
+        'password_confirmation' => 'confirmação da senha',
+        'vertical' => 'tipo de negócio',
     ],
 ];
