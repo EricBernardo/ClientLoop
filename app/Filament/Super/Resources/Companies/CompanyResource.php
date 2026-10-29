@@ -116,7 +116,7 @@ class CompanyResource extends Resource
                 ];
 
                 if ($record->status === 'trial') {
-                    $payload['ends_at'] = now()->addDays(14);
+                    $payload['ends_at'] = now()->addDays(30);
                 }
 
                 CompanySubscription::withoutGlobalScopes()->updateOrCreate(['company_id' => $record->id], $payload);

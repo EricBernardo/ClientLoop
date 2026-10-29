@@ -61,7 +61,7 @@ class RegistrationController extends Controller
                 ['name' => 'Teste gratuito'],
                 ['contact_limit' => 500, 'task_limit' => 1000, 'is_default' => true],
             );
-            CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'trial', 'starts_at' => now(), 'ends_at' => now()->addDays(14)]);
+            CompanySubscription::withoutGlobalScopes()->create(['company_id' => $company->id, 'plan_id' => $plan->id, 'status' => 'trial', 'starts_at' => now(), 'ends_at' => now()->addDays(30)]);
 
             $messageTemplates->provision($company);
 

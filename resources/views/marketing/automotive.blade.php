@@ -25,7 +25,7 @@
                         <a class="button primary" href="{{ route('register', ['niche' => 'automotiva']) }}">Começar gratuitamente</a>
                         <a class="button secondary" href="#recursos">Ver o que inclui</a>
                     </div>
-                    <p class="fine">14 dias de teste. Sem cartão nesta etapa.</p>
+                    <p class="fine">30 dias de teste. Sem cartão nesta etapa.</p>
                 </div>
                 <aside class="preview" aria-label="Exemplo do painel da oficina">
                     <div class="preview-head"><strong>Rotina de hoje</strong><span class="badge">Ordem · Recibo · Caixa</span></div>
