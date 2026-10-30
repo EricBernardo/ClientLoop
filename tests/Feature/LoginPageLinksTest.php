@@ -23,4 +23,13 @@ class LoginPageLinksTest extends TestCase
             ->assertDontSee('Cadastre-se')
             ->assertDontSee('Ir para a página inicial');
     }
+
+    public function test_platform_login_offers_password_reset(): void
+    {
+        $this->get('/platform/login')
+            ->assertOk()
+            ->assertSee('href="'.url('/platform/password-reset/request').'"', false);
+
+        $this->get('/platform/password-reset/request')->assertOk();
+    }
 }
